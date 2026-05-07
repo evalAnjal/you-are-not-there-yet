@@ -52,6 +52,11 @@ export default function DeadDropHunter() {
       <footer className="w-full mt-8 p-4 bg-white border-2 border-black">
         <input type="range" min="0" max="1000" value={distance} onChange={(e) => setDistance(Number(e.target.value))} className="w-full" />
       </footer>
+            <div className="grid grid-cols-2 gap-2">
+          <div className="text-xs uppercase tracking-widest border-b border-black pb-1">Bearing: {bearing}°</div>
+          <div className="text-xs uppercase tracking-widest border-b border-black pb-1">Status: {isUnlocked ? "UNLOCKED" : "LOCKED"}</div>
+        </div>
+      </footer>
     </div>
   );
 }
