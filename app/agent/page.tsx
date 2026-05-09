@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ScreenTab = 'briefing' | 'hunter' | 'archive';
 
 export default function AgentTerminal() {
   const [activeTab, setActiveTab] = useState<ScreenTab>('briefing');
+  const [showBoot, setShowBoot] = useState(true);
+
+  const handleEnterField = () => {
+    setShowBoot(false);
+  };
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col overflow-hidden">
@@ -33,6 +38,19 @@ export default function AgentTerminal() {
           <span className="text-xs uppercase">Archive</span>
         </button>
       </nav>
+
+      <AnimatePresence>
+        {showBoot && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-white p-6 flex flex-col justify-between">
+            <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
+              <motion.p variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="text-xs uppercase tracking-widest">[SYSTEM INIT]</motion.p>
+              <motion.p variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="text-xs uppercase tracking-widest mt-2">[ACQUIRING SATELLITE LOCK]</motion.p>
+              <motion.p variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="text-xs uppercase tracking-widest mt-2">[CALIBRATING SECTOR]</motion.p>
+            </motion.div>
+            <button onClick={handleEnterField} className="w-full px-6 py-4 border-2 border-black bg-orange-600 text-white uppercase tracking-widest text-xs">Enter Field</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
