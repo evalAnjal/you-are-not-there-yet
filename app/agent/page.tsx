@@ -5,6 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, MapPin } from 'lucide-react';
 
 type ScreenTab = 'briefing' | 'hunter' | 'archive';
+type PayloadType = 'text' | 'link';
+
+interface NavButtonProps {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}
 
 function BriefingRoom() {
   return (
