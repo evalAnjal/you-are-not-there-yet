@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, Activity } from 'lucide-react';
+
+interface DeadDropState {
+  distance: number;
+  bearing: number;
+  isUnlocked: boolean;
+}
 
 export default function DeadDropHunter() {
   const [distance, setDistance] = useState(450);
