@@ -15,6 +15,28 @@ A geographic dead drop application where users physically travel to GPS coordina
 **Design Language:** Industrial light-mode (white/black/#FFA500 accent)
 **Git Strategy:** Backdated commits May 1-14, 2026
 
+## ICON INVENTORY
+
+Use `lucide-react` and import only the icons listed below. The project depends on these exact icons, so include them in any recreated version:
+
+- `Lock` - main compass state when the payload is still encrypted
+- `Unlock` - unlock state, success badge, and unlocked payload display
+- `Activity` - optional signal/debug indicator in the main compass page
+- `ChevronRight` - navigation affordance inside the agent terminal UI
+- `MapPin` - location/field marker in the agent terminal UI
+
+If you rebuild this project from scratch, make sure the icon library is installed and that the imports appear in the correct file:
+
+```typescript
+// app/page.tsx
+import { Lock, Unlock, Activity } from 'lucide-react';
+
+// app/agent/page.tsx
+import { ChevronRight, MapPin } from 'lucide-react';
+```
+
+If any additional icons are added later, list them here with the same format so the prompt stays complete.
+
 ---
 
 ## STEP 1: PROJECT SETUP
@@ -357,6 +379,19 @@ export default function AgentTerminal() {
 - **Padding:** p-4, p-6, p-3, p-1
 - **Gaps:** gap-2, gap-4, gap-12
 - **Border Radius:** Avoid (sharp corners) or rounded-full only
+
+### Shadows / Visual Effects
+- Use hard, brutalist drop shadows instead of soft blurred shadows.
+- Primary shadow style for buttons and callouts: `shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`.
+- Hover state can tighten the shadow or shift the element by `translate-x-[1px] translate-y-[1px]` while keeping the hard edge look.
+- Avoid soft `shadow-lg`, `shadow-xl`, gradients, glows, or translucent blur effects.
+- Use shadow accents on primary action buttons, cards, and important labels to make the UI feel physical and mechanical.
+
+### Interaction Styling
+- Buttons should feel pressable: solid fill, 2px black border, hard shadow, uppercase label.
+- On press or active state, reduce the shadow offset and slightly translate the element down/right.
+- Secondary controls can use lighter shadows or no shadow, but they should still match the brutalist visual language.
+- Disabled or inactive UI should stay flat and mostly monochrome.
 
 ### Motion (Framer Motion)
 - **Spring Config:** stiffness: 420, damping: 28 (tight, mechanical feel)

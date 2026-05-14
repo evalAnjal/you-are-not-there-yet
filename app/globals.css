@@ -5,6 +5,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --shadow-brutalist: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-brutalist-lg: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
+  --shadow-brutalist-hover: 6px 6px 0px 0px rgba(0, 0, 0, 1);
 }
 
 body {
@@ -16,3 +19,51 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Brutalist Shadow Utilities */
+@layer components {
+  .shadow-brutalist {
+    box-shadow: var(--shadow-brutalist);
+  }
+  
+  .shadow-brutalist-lg {
+    box-shadow: var(--shadow-brutalist-lg);
+  }
+  
+  .shadow-brutalist-hover {
+    box-shadow: var(--shadow-brutalist-hover);
+  }
+  
+  /* Interactive Elements */
+  .btn-brutalist {
+    @apply border-2 border-black font-mono uppercase tracking-widest text-xs font-bold transition-all duration-100;
+    box-shadow: var(--shadow-brutalist);
+  }
+  
+  .btn-brutalist:active {
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+    transform: translate(2px, 2px);
+  }
+  
+  .btn-brutalist:hover {
+    box-shadow: var(--shadow-brutalist-hover);
+  }
+  
+  /* Field Card */
+  .card-field {
+    @apply border-2 border-black bg-white p-4;
+    box-shadow: var(--shadow-brutalist);
+  }
+  
+  /* Input Fields */
+  .input-brutalist {
+    @apply border-2 border-black bg-white px-3 py-2 font-mono text-xs uppercase tracking-widest focus:outline-none;
+    box-shadow: inset 2px 2px 0px 0px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Divider */
+  .divider-thick {
+    @apply border-t-2 border-black;
+  }
+}
+

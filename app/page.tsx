@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, Crosshair, Compass } from 'lucide-react';
 
 interface DeadDropState {
   distance: number;
@@ -16,55 +16,129 @@ export default function DeadDropHunter() {
   const [isUnlocked, setIsUnlocked] = useState(false);
 
   const unlockThreshold = 10;
-  const getSignalColor = () => distance <= unlockThreshold ? "text-orange-600" : "text-zinc-900";
-  const getBgColor = () => distance <= unlockThreshold ? "bg-orange-600/10" : "bg-zinc-100";
-  
+  const getSignalColor = () => (distance <= unlockThreshold ? 'text-orange-600' : 'text-zinc-900');
+  const getBgColor = () => (distance <= unlockThreshold ? 'bg-orange-600/5' : 'bg-white');
+  const getBorderColor = () => (distance <= unlockThreshold ? 'border-orange-600' : 'border-black');
+
   useEffect(() => {
     setIsUnlocked(distance <= unlockThreshold);
   }, [distance]);
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col items-center justify-between p-6">
+      {/* Header */}
       <header className="w-full flex justify-between items-center py-4 border-b-2 border-black">
-        <span className="text-xs tracking-widest uppercase">Signal Lock</span>
-        <div className="text-xs border-2 border-black px-3 py-1">#DROP-8492</div>
+        <div className="flex items-center gap-2 text-xs tracking-widest uppercase font-bold">
+          <Compass className="w-4 h-4" />
+          Signal Lock
+        </div>
+        <div className="text-xs border-2 border-black px-3 py-1 font-mono font-bold">#DROP-8492</div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center max-w-md gap-12">
-        <motion.div className="text-center" key={distance} initial={{ scale: 0.95 }} animate={{ scale: 1 }}>
-          <h1 className={`text-7xl font-bold ${getSignalColor()}`}>{distance}<span className="text-2xl">m</span></h1>
-          <p className="text-xs uppercase tracking-widest mt-3 text-zinc-600">{isUnlocked ? "Target Reached" : "Distance to Target"}</p>
-        </motion.div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center max-w-md gap-16 w-full">
+        {/* Distance Display */}
+        <div className="text-center w-full">
+          <div className={`card-field ${getBgColor()} border-2 ${getBorderColor()}`}>
+            <h1 className={`text-6xl font-bold ${getSignalColor()}`}>
+              {distance}
+              <span className="text-2xl ml-2">m</span>
+            </h1>
+            <div className="divider-thick my-3"></div>
+            <p className="text-xs uppercase tracking-widest text-zinc-600">
+              {isUnlocked ? '✓ Target Reached' : '○ Distance to Target'}
+            </p>
+          </div>
+        </div>
 
-        <div className={`relative w-64 h-64 border-2 border-black ${getBgColor()} bg-opacity-50 flex items-center justify-center transition-all`}>
-          <motion.div animate={{ rotate: bearing }} transition={{ type: "spring", stiffness: 420, damping: 28 }} className="absolute w-full h-full flex items-start justify-center pt-4">
-            <motion.div className={`w-6 h-6 ${getSignalColor()}`}>{isUnlocked ? <Unlock /> : <Lock />}</motion.div>
+        {/* Compass Circle */}
+        <div className={`relative w-72 h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
+          {/* Cardinal Points */}
+          <div className="absolute inset-0 flex items-center justify-center font-bold text-xs">
+            <span className="absolute top-4">N</span>
+            <span className="absolute bottom-4">S</span>
+            <span className="absolute left-4">W</span>
+            <span className="absolute right-4">E</span>
+          </div>
+
+          {/* Rotating Indicator */}
+          <motion.div
+            animate={{ rotate: bearing }}
+            transition={{ duration: 0.2 }}
+            className="absolute w-full h-full flex items-start justify-center pt-8"
+          >
+            <div className={`${getSignalColor()}`}>
+              {isUnlocked ? (
+                <Unlock className="w-6 h-6" strokeWidth={3} />
+              ) : (
+                <Lock className="w-6 h-6" strokeWidth={3} />
+              )}
+            </div>
           </motion.div>
-          <div className="w-3 h-3 bg-black rounded-full z-10"></div>
+
+          {/* Center Crosshair */}
+          <div className="w-4 h-4 bg-black border-2 border-white z-10"></div>
         </div>
 
-        <div className={`w-full border-2 border-black ${isUnlocked ? "bg-white" : "bg-zinc-100"} p-6`}>
-          {!isUnlocked ? (
-            <div className="text-center text-xs uppercase tracking-widest">Content Encrypted</div>
-          ) : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-              <Unlock className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-              <p className="text-xs">Payload Unlocked</p>
-            </motion.div>
-          )}
-        </div>
+        {/* Unlock Message */}
+        {isUnlocked && (
+          <div className="card-field w-full bg-orange-600/5 border-2 border-orange-600">
+            <div className="flex items-center gap-2 justify-center">
+              <Unlock className="w-5 h-5 text-orange-600" />
+              <span className="text-xs uppercase tracking-widest font-bold text-orange-600">
+                Payload Unlocked
+              </span>
+            </div>
+          </div>
+        )}
       </main>
 
-      <footer className="w-full mt-8 p-4 bg-white border-2 border-black">
-        <input type="range" min="0" max="1000" value={distance} onChange={(e) => setDistance(Number(e.target.value))} className="w-full" />
-      </footer>
-
-      <footer className="w-full mt-4 p-4 bg-white border-2 border-black">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="text-xs uppercase tracking-widest border-b border-black pb-1">Bearing: {bearing}°</div>
-          <div className="text-xs uppercase tracking-widest border-b border-black pb-1">Status: {isUnlocked ? "UNLOCKED" : "LOCKED"}</div>
+      {/* Footer Controls */}
+      <div className="w-full space-y-4">
+        {/* Distance Slider */}
+        <div className="card-field space-y-3">
+          <label className="text-xs uppercase tracking-widest font-bold">Distance Sensor</label>
+          <input
+            type="range"
+            min="0"
+            max="1000"
+            value={distance}
+            onChange={(e) => setDistance(Number(e.target.value))}
+            className="w-full h-2 bg-white border-2 border-black accent-orange-600 cursor-pointer"
+          />
+          <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+            <button
+              onClick={() => setDistance(Math.max(0, distance - 50))}
+              className="border-2 border-black py-1 bg-white hover:bg-zinc-100 active:translate-x-[1px] active:translate-y-[1px]"
+            >
+              −50m
+            </button>
+            <div className="border-2 border-black py-1 bg-white text-center font-bold">{distance}m</div>
+            <button
+              onClick={() => setDistance(Math.min(1000, distance + 50))}
+              className="border-2 border-black py-1 bg-white hover:bg-zinc-100 active:translate-x-[1px] active:translate-y-[1px]"
+            >
+              +50m
+            </button>
+          </div>
         </div>
-      </footer>
+
+        {/* Status readout */}
+        <div className="card-field">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-widest text-zinc-600 font-bold">Bearing</div>
+              <div className="text-lg font-bold font-mono">{bearing}°</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-widest text-zinc-600 font-bold">Status</div>
+              <div className={`text-lg font-bold ${getSignalColor()}`}>
+                {isUnlocked ? 'UNLOCKED' : 'LOCKED'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
