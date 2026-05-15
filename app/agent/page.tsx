@@ -16,10 +16,20 @@ interface DeployedDrop {
 }
 
 // ============================================================================
-// UTILITY: Generate 6-digit code
+// UTILITY: Generate 6-character alphanumeric code
 // ============================================================================
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  while (true) {
+    const code = Array.from({ length: 6 }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+    const hasLetter = /[A-Z]/.test(code);
+    const hasNumber = /[0-9]/.test(code);
+
+    if (hasLetter && hasNumber) {
+      return code;
+    }
+  }
 }
 
 // ============================================================================
@@ -115,8 +125,14 @@ function CodeConfirmation({
           <div className="text-xs uppercase tracking-widest text-zinc-600 font-bold">
             Unlock Code
           </div>
-          <div className="text-5xl font-bold font-mono tracking-widest bg-orange-600/5 p-4 border-2 border-orange-600">
-            {drop.code.split('').join(' ')}
+          <div className="bg-orange-600/5 p-3 sm:p-4 border-2 border-orange-600">
+            <div className="font-mono font-bold text-3xl sm:text-5xl tracking-widest sm:tracking-widest leading-none whitespace-nowrap">
+              {drop.code && drop.code.length >= 6 ? (
+                <>{drop.code.slice(0,3)} - {drop.code.slice(3)}</>
+              ) : (
+                <>{drop.code}</>
+              )}
+            </div>
           </div>
           <button
             onClick={handleCopy}
@@ -207,11 +223,11 @@ function BriefingRoom({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
         </div>
       ) : (
         deployedDrops.map((drop) => {
-          const isFound = parseInt(drop.code, 10) % 2 === 0;
+          const isFound = drop.code && drop.code.length ? drop.code.charCodeAt(0) % 2 === 0 : false;
           return (
             <div key={drop.code} className="card-field space-y-1">
               <div className="flex justify-between items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-widest font-mono">{drop.code}</span>
+                <span className="text-xs font-bold uppercase tracking-widest font-mono">{drop.code && drop.code.length >= 6 ? `${drop.code.slice(0,3)}-${drop.code.slice(3)}` : drop.code}</span>
                 <span className={`text-xs uppercase tracking-widest font-bold px-2 py-1 border-2 ${
                   isFound
                     ? 'border-orange-600 text-orange-600 bg-orange-600/5'
@@ -381,7 +397,7 @@ function ArchiveLogbook({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
             <div className="flex justify-between items-start gap-4">
               <div>
                 <div className="text-xs font-bold uppercase tracking-widest font-mono">
-                  {drop.code}
+                  {drop.code && drop.code.length >= 6 ? `${drop.code.slice(0,3)}-${drop.code.slice(3)}` : drop.code}
                 </div>
                 <div className="text-xs text-zinc-600 font-mono">{drop.timestamp}</div>
               </div>
