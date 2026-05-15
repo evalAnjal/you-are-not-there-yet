@@ -43,15 +43,34 @@ export default function OriginPage() {
 
   const handleDeploy = () => {
     if (!message.trim()) return;
-    // fallback to zeros if no coords
-    const finalLat = lat || '0.000000';
-    const finalLng = lng || '0.000000';
-    const code = generateCode();
-    setLastCode(code);
+    (async () => {
+      const finalLat = lat || '0.000000';
+      const finalLng = lng || '0.000000';
+      const code = generateCode();
+      setLastCode(null);
+      try {
+        const res = await fetch('/api/drops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, lat: finalLat, lng: finalLng, radius: radiusOptions[radiusIndex], message }),
+        });
 
-    // For now we just show the code; backend integration will persist it later
-    console.log('Deployed', { code, finalLat, finalLng, radius: radiusOptions[radiusIndex], message });
-    setMessage('');
+        if (!res.ok) {
+          const err = await res.json();
+          console.error('Failed to save drop', err);
+          setLocStatus('Failed to save deployment');
+          return;
+        }
+
+        const data = await res.json();
+        setLastCode(data.code || code);
+        setMessage('');
+        setLocStatus('Deployed');
+      } catch (e) {
+        console.error(e);
+        setLocStatus('Deployment error');
+      }
+    })();
   };
 
   return (
