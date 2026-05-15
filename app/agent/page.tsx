@@ -462,7 +462,7 @@ export default function AgentTerminal() {
       </AnimatePresence>
 
       {/* Header */}
-      <header className="h-16 px-6 bg-white border-b-2 border-black flex items-center justify-between">
+      <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white border-b-2 border-black flex items-center justify-between">
         <span className="text-xs uppercase tracking-widest font-bold">Agent Terminal</span>
         <div className="flex items-center gap-1 text-xs text-orange-600">
           <Zap className="w-3 h-3" />
@@ -471,7 +471,7 @@ export default function AgentTerminal() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 relative overflow-y-auto pb-20 bg-white">
+      <main className="flex-1 relative overflow-y-auto pb-24 sm:pb-20 bg-white">
         <AnimatePresence mode="wait">
           {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
           {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
@@ -480,7 +480,7 @@ export default function AgentTerminal() {
       </main>
 
       {/* Bottom Navigation - Icons Only */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-4 py-3 flex justify-around gap-2">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 sm:px-4 py-2 sm:py-3 flex justify-around gap-1 sm:gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -489,14 +489,14 @@ export default function AgentTerminal() {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as ScreenTab)}
-              className={`p-3 border-2 transition-all ${
+              className={`p-2 sm:p-3 border-2 transition-all ${
                 isActive
                   ? 'border-black bg-orange-600 text-white shadow-brutalist'
                   : 'border-black bg-white text-black'
               }`}
               title={item.label}
             >
-              <Icon className="w-5 h-5" strokeWidth={2.5} />
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
             </button>
           );
         })}

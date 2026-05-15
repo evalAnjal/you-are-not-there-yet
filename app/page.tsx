@@ -25,24 +25,21 @@ export default function DeadDropHunter() {
   }, [distance]);
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col items-center justify-between p-6">
+    <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col items-center justify-between p-4 sm:p-6">
       {/* Header */}
-      <header className="w-full flex justify-between items-center py-4 border-b-2 border-black">
-        <div className="flex items-center gap-2 text-xs tracking-widest uppercase font-bold">
-          <Compass className="w-4 h-4" />
-          Signal Lock
-        </div>
-        <div className="text-xs border-2 border-black px-3 py-1 font-mono font-bold">#DROP-8492</div>
+      <header className="w-full flex justify-between items-center py-3 sm:py-4 border-b-2 border-black">
+        <span className="text-xs tracking-widest uppercase font-bold">Signal Lock</span>
+        <div className="text-xs border-2 border-black px-2 sm:px-3 py-1 font-mono font-bold">#DROP-8492</div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center max-w-md gap-16 w-full">
+      <main className="flex-1 flex flex-col items-center justify-center max-w-md gap-8 sm:gap-16 w-full">
         {/* Distance Display */}
         <div className="text-center w-full">
           <div className={`card-field ${getBgColor()} border-2 ${getBorderColor()}`}>
-            <h1 className={`text-6xl font-bold ${getSignalColor()}`}>
+            <h1 className={`text-4xl sm:text-6xl font-bold ${getSignalColor()}`}>
               {distance}
-              <span className="text-2xl ml-2">m</span>
+              <span className="text-lg sm:text-2xl ml-2">m</span>
             </h1>
             <div className="divider-thick my-3"></div>
             <p className="text-xs uppercase tracking-widest text-zinc-600">
@@ -52,7 +49,7 @@ export default function DeadDropHunter() {
         </div>
 
         {/* Compass Circle */}
-        <div className={`relative w-72 h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
+        <div className={`relative w-56 h-56 sm:w-72 sm:h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
           {/* Cardinal Points */}
           <div className="absolute inset-0 flex items-center justify-center font-bold text-xs">
             <span className="absolute top-4">N</span>
@@ -94,7 +91,7 @@ export default function DeadDropHunter() {
       </main>
 
       {/* Footer Controls */}
-      <div className="w-full space-y-4">
+      <div className="w-full space-y-3 sm:space-y-4 pb-2">
         {/* Distance Slider */}
         <div className="card-field space-y-3">
           <label className="text-xs uppercase tracking-widest font-bold">Distance Sensor</label>
