@@ -206,21 +206,24 @@ function BriefingRoom({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
           <p className="text-xs uppercase tracking-widest text-zinc-600">No drops deployed yet</p>
         </div>
       ) : (
-        deployedDrops.map((drop) => (
-          <div key={drop.code} className="card-field space-y-1">
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-widest font-mono">{drop.code}</span>
-              <span className={`text-xs uppercase tracking-widest font-bold px-2 py-1 border-2 ${
-                Math.random() > 0.5
-                  ? 'border-orange-600 text-orange-600 bg-orange-600/5'
-                  : 'border-zinc-300 text-zinc-600 bg-zinc-50'
-              }`}>
-                {Math.random() > 0.5 ? 'FOUND' : 'WAITING'}
-              </span>
+        deployedDrops.map((drop) => {
+          const isFound = parseInt(drop.code, 10) % 2 === 0;
+          return (
+            <div key={drop.code} className="card-field space-y-1">
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-widest font-mono">{drop.code}</span>
+                <span className={`text-xs uppercase tracking-widest font-bold px-2 py-1 border-2 ${
+                  isFound
+                    ? 'border-orange-600 text-orange-600 bg-orange-600/5'
+                    : 'border-zinc-300 text-zinc-600 bg-zinc-50'
+                }`}>
+                  {isFound ? 'FOUND' : 'WAITING'}
+                </span>
+              </div>
+              <div className="text-xs text-zinc-600 font-mono">{drop.timestamp}</div>
             </div>
-            <div className="text-xs text-zinc-600 font-mono">{drop.timestamp}</div>
-          </div>
-        ))
+          );
+        })
       )}
     </motion.div>
   );

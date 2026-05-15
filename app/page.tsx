@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Unlock, Crosshair, Compass } from 'lucide-react';
+import { Lock, Unlock, Activity } from 'lucide-react';
 
 interface DeadDropState {
   distance: number;
@@ -119,6 +119,34 @@ export default function DeadDropHunter() {
               className="border-2 border-black py-1 bg-white hover:bg-zinc-100 active:translate-x-[1px] active:translate-y-[1px]"
             >
               +50m
+            </button>
+          </div>
+        </div>
+
+        {/* Bearing Control */}
+        <div className="card-field space-y-3">
+          <label className="text-xs uppercase tracking-widest font-bold">Bearing Compass</label>
+          <input
+            type="range"
+            min="0"
+            max="360"
+            value={bearing}
+            onChange={(e) => setBearing(Number(e.target.value))}
+            className="w-full h-2 bg-white border-2 border-black accent-orange-600 cursor-pointer"
+          />
+          <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+            <button
+              onClick={() => setBearing((bearing - 45 + 360) % 360)}
+              className="border-2 border-black py-1 bg-white hover:bg-zinc-100 active:translate-x-[1px] active:translate-y-[1px]"
+            >
+              −45°
+            </button>
+            <div className="border-2 border-black py-1 bg-white text-center font-bold">{bearing}°</div>
+            <button
+              onClick={() => setBearing((bearing + 45) % 360)}
+              className="border-2 border-black py-1 bg-white hover:bg-zinc-100 active:translate-x-[1px] active:translate-y-[1px]"
+            >
+              +45°
             </button>
           </div>
         </div>
