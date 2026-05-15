@@ -2,9 +2,25 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Archive, Radio, Zap } from 'lucide-react';
+import { MapPin, Archive, Radio, Zap, Copy, Check, X } from 'lucide-react';
 
 type ScreenTab = 'briefing' | 'origin' | 'archive';
+
+interface DeployedDrop {
+  code: string;
+  timestamp: string;
+  lat: string;
+  lng: string;
+  radius: string;
+  message: string;
+}
+
+// ============================================================================
+// UTILITY: Generate 6-digit code
+// ============================================================================
+function generateCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // ============================================================================
 // TERMINAL BOOT SEQUENCE
@@ -56,15 +72,123 @@ function TerminalBootSequence({ onComplete }: { onComplete: () => void }) {
 }
 
 // ============================================================================
+// CODE CONFIRMATION SCREEN
+// ============================================================================
+function CodeConfirmation({
+  drop,
+  onClose,
+}: {
+  drop: DeployedDrop;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(drop.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-40 bg-white flex flex-col items-center justify-between p-6 font-mono"
+    >
+      <div className="w-full space-y-6 pt-8">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="text-xs uppercase tracking-widest text-orange-600 font-bold">
+            Payload Deployed
+          </div>
+          <div className="divider-thick"></div>
+        </div>
+
+        {/* Code Display */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1, duration: 0.2 }}
+          className="card-field text-center space-y-4"
+        >
+          <div className="text-xs uppercase tracking-widest text-zinc-600 font-bold">
+            Unlock Code
+          </div>
+          <div className="text-5xl font-bold font-mono tracking-widest bg-orange-600/5 p-4 border-2 border-orange-600">
+            {drop.code.split('').join(' ')}
+          </div>
+          <button
+            onClick={handleCopy}
+            className="btn-brutalist w-full py-2 bg-white border-2 border-black flex items-center justify-center gap-2 active:translate-x-[2px] active:translate-y-[2px]"
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4" /> Copy Code
+              </>
+            )}
+          </button>
+        </motion.div>
+
+        {/* Deployment Details */}
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.2 }}
+          className="card-field space-y-4"
+        >
+          <div className="text-xs uppercase tracking-widest font-bold">Deployment Details</div>
+          <div className="divider-thick"></div>
+          
+          <div className="space-y-3 text-xs">
+            <div className="space-y-1">
+              <div className="text-zinc-600 uppercase tracking-widest font-bold">Location</div>
+              <div className="font-mono">
+                {drop.lat}°N, {drop.lng}°W
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <div className="text-zinc-600 uppercase tracking-widest font-bold">Unlock Radius</div>
+              <div className="font-mono">{drop.radius}</div>
+            </div>
+            
+            <div className="space-y-1">
+              <div className="text-zinc-600 uppercase tracking-widest font-bold">Timestamp</div>
+              <div className="font-mono">{drop.timestamp}</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-zinc-600 uppercase tracking-widest font-bold">Message</div>
+              <div className="bg-zinc-50 p-2 border-2 border-zinc-300 text-xs">
+                {drop.message}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      <motion.button
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.2 }}
+        onClick={onClose}
+        className="btn-brutalist bg-black text-white w-full py-3 mt-8 active:translate-x-[2px] active:translate-y-[2px]"
+      >
+        Close
+      </motion.button>
+    </motion.div>
+  );
+}
+
+// ============================================================================
 // BRIEFING ROOM
 // ============================================================================
-function BriefingRoom() {
-  const signals = [
-    { id: 1, sector: 'Sector A1', distance: '0.8km', time: '2026-05-14 09:30' },
-    { id: 2, sector: 'Sector B2', distance: '2.1km', time: '2026-05-14 10:15' },
-    { id: 3, sector: 'Sector C3', distance: '5.4km', time: '2026-05-14 11:00' },
-  ];
-
+function BriefingRoom({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -74,18 +198,30 @@ function BriefingRoom() {
       className="p-6 space-y-4"
     >
       <div className="card-field">
-        <h2 className="text-sm uppercase tracking-widest font-bold">Nearby Signals</h2>
+        <h2 className="text-sm uppercase tracking-widest font-bold">Your Deployments</h2>
       </div>
 
-      {signals.map((signal) => (
-        <div key={signal.id} className="card-field space-y-1">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold uppercase tracking-widest">{signal.sector}</span>
-            <span className="text-xs text-orange-600 font-mono">{signal.distance}</span>
-          </div>
-          <div className="text-xs text-zinc-600 font-mono">{signal.time}</div>
+      {deployedDrops.length === 0 ? (
+        <div className="card-field text-center py-6">
+          <p className="text-xs uppercase tracking-widest text-zinc-600">No drops deployed yet</p>
         </div>
-      ))}
+      ) : (
+        deployedDrops.map((drop) => (
+          <div key={drop.code} className="card-field space-y-1">
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-widest font-mono">{drop.code}</span>
+              <span className={`text-xs uppercase tracking-widest font-bold px-2 py-1 border-2 ${
+                Math.random() > 0.5
+                  ? 'border-orange-600 text-orange-600 bg-orange-600/5'
+                  : 'border-zinc-300 text-zinc-600 bg-zinc-50'
+              }`}>
+                {Math.random() > 0.5 ? 'FOUND' : 'WAITING'}
+              </span>
+            </div>
+            <div className="text-xs text-zinc-600 font-mono">{drop.timestamp}</div>
+          </div>
+        ))
+      )}
     </motion.div>
   );
 }
@@ -93,13 +229,37 @@ function BriefingRoom() {
 // ============================================================================
 // ORIGIN POINT (DROP CREATION)
 // ============================================================================
-function OriginPoint() {
+function OriginPoint({
+  onCodeGenerated,
+}: {
+  onCodeGenerated: (drop: DeployedDrop) => void;
+}) {
   const [payloadType, setPayloadType] = useState<'text' | 'link'>('text');
   const [radiusIndex, setRadiusIndex] = useState(1);
+  const [message, setMessage] = useState('');
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
 
   const mockLat = '40.7128';
   const mockLng = '-74.0060';
+
+  const handleDeploy = () => {
+    if (!message.trim()) return;
+
+    const now = new Date();
+    const timestamp = now.toISOString().split('T')[0] + ' ' + now.toTimeString().split(' ')[0];
+
+    const drop: DeployedDrop = {
+      code: generateCode(),
+      timestamp,
+      lat: mockLat,
+      lng: mockLng,
+      radius: radiusOptions[radiusIndex],
+      message,
+    };
+
+    onCodeGenerated(drop);
+    setMessage('');
+  };
 
   return (
     <motion.div
@@ -172,13 +332,19 @@ function OriginPoint() {
       <div className="space-y-2">
         <div className="text-xs uppercase tracking-widest font-bold">Message</div>
         <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
           placeholder="Enter your payload..."
           className="input-brutalist w-full h-24 resize-none"
         />
       </div>
 
       {/* Deploy Button */}
-      <button className="btn-brutalist bg-orange-600 text-white w-full py-4 sticky bottom-24 active:translate-x-[2px] active:translate-y-[2px]">
+      <button
+        onClick={handleDeploy}
+        disabled={!message.trim()}
+        className="btn-brutalist bg-orange-600 text-white w-full py-4 sticky bottom-24 active:translate-x-[2px] active:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
         Deploy Payload
       </button>
     </motion.div>
@@ -188,34 +354,7 @@ function OriginPoint() {
 // ============================================================================
 // ARCHIVE LOGBOOK
 // ============================================================================
-function ArchiveLogbook() {
-  const archives = [
-    {
-      id: 'AR-001',
-      timestamp: '2026-05-14 08:30',
-      lat: '40.7128',
-      lng: '-74.0060',
-      message: 'First signal detected. Coordinates locked.',
-      status: 'INTERCEPTED',
-    },
-    {
-      id: 'AR-002',
-      timestamp: '2026-05-13 15:45',
-      lat: '40.7580',
-      lng: '-73.9855',
-      message: 'Secondary payload recovered.',
-      status: 'RECOVERED',
-    },
-    {
-      id: 'AR-003',
-      timestamp: '2026-05-12 12:00',
-      lat: '40.7489',
-      lng: '-73.9680',
-      message: 'Archive entry - mission critical data.',
-      status: 'INTERCEPTED',
-    },
-  ];
-
+function ArchiveLogbook({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -228,41 +367,55 @@ function ArchiveLogbook() {
         <h2 className="text-sm uppercase tracking-widest font-bold">Field Logbook</h2>
       </div>
 
-      {archives.map((archive) => (
-        <div key={archive.id} className="card-field space-y-3">
-          {/* Header with Stamp */}
-          <div className="flex justify-between items-start gap-4">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-widest">{archive.id}</div>
-              <div className="text-xs text-zinc-600 font-mono">{archive.timestamp}</div>
-            </div>
-            <div className="border-2 border-black px-2 py-1 transform -rotate-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-600">
-                {archive.status}
-              </span>
-            </div>
-          </div>
-
-          <div className="divider-thick"></div>
-
-          {/* Coordinates */}
-          <div className="grid grid-cols-2 gap-3 font-mono text-xs">
-            <div className="space-y-1">
-              <div className="text-zinc-600 uppercase tracking-widest">Latitude</div>
-              <div className="font-bold">{archive.lat}°N</div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-zinc-600 uppercase tracking-widest">Longitude</div>
-              <div className="font-bold">{archive.lng}°W</div>
-            </div>
-          </div>
-
-          {/* Message */}
-          <div className="bg-zinc-50 p-3 border-2 border-zinc-300">
-            <p className="text-xs font-mono">{archive.message}</p>
-          </div>
+      {deployedDrops.length === 0 ? (
+        <div className="card-field text-center py-8">
+          <p className="text-xs uppercase tracking-widest text-zinc-600">No drops deployed yet</p>
         </div>
-      ))}
+      ) : (
+        deployedDrops.map((drop) => (
+          <div key={drop.code} className="card-field space-y-3">
+            {/* Header with Code */}
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-widest font-mono">
+                  {drop.code}
+                </div>
+                <div className="text-xs text-zinc-600 font-mono">{drop.timestamp}</div>
+              </div>
+              <div className="border-2 border-black px-2 py-1 transform -rotate-12">
+                <span className="text-xs font-bold uppercase tracking-widest text-orange-600">
+                  DEPLOYED
+                </span>
+              </div>
+            </div>
+
+            <div className="divider-thick"></div>
+
+            {/* Coordinates */}
+            <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+              <div className="space-y-1">
+                <div className="text-zinc-600 uppercase tracking-widest">Latitude</div>
+                <div className="font-bold">{drop.lat}°N</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-zinc-600 uppercase tracking-widest">Longitude</div>
+                <div className="font-bold">{drop.lng}°W</div>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="space-y-1 text-xs">
+              <div className="text-zinc-600 uppercase tracking-widest font-bold">Radius</div>
+              <div className="font-mono">{drop.radius}</div>
+            </div>
+
+            {/* Message */}
+            <div className="bg-zinc-50 p-3 border-2 border-zinc-300">
+              <p className="text-xs font-mono">{drop.message}</p>
+            </div>
+          </div>
+        ))
+      )}
     </motion.div>
   );
 }
@@ -273,6 +426,8 @@ function ArchiveLogbook() {
 export default function AgentTerminal() {
   const [activeTab, setActiveTab] = useState<ScreenTab>('briefing');
   const [showBoot, setShowBoot] = useState(true);
+  const [deployedDrops, setDeployedDrops] = useState<DeployedDrop[]>([]);
+  const [selectedDrop, setSelectedDrop] = useState<DeployedDrop | null>(null);
 
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },
@@ -280,11 +435,26 @@ export default function AgentTerminal() {
     { id: 'archive', icon: Archive, label: 'Archive' },
   ] as const;
 
+  const handleCodeGenerated = (drop: DeployedDrop) => {
+    setDeployedDrops([drop, ...deployedDrops]);
+    setSelectedDrop(drop);
+  };
+
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col overflow-hidden">
       <AnimatePresence mode="wait">
         {showBoot && (
           <TerminalBootSequence key="boot" onComplete={() => setShowBoot(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {selectedDrop && (
+          <CodeConfirmation
+            key="codeConfirmation"
+            drop={selectedDrop}
+            onClose={() => setSelectedDrop(null)}
+          />
         )}
       </AnimatePresence>
 
@@ -300,9 +470,9 @@ export default function AgentTerminal() {
       {/* Main Content */}
       <main className="flex-1 relative overflow-y-auto pb-20 bg-white">
         <AnimatePresence mode="wait">
-          {activeTab === 'briefing' && <BriefingRoom key="briefing" />}
-          {activeTab === 'origin' && <OriginPoint key="origin" />}
-          {activeTab === 'archive' && <ArchiveLogbook key="archive" />}
+          {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
+          {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
+          {activeTab === 'archive' && <ArchiveLogbook key="archive" deployedDrops={deployedDrops} />}
         </AnimatePresence>
       </main>
 
@@ -315,7 +485,7 @@ export default function AgentTerminal() {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => setActiveTab(item.id as ScreenTab)}
               className={`p-3 border-2 transition-all ${
                 isActive
                   ? 'border-black bg-orange-600 text-white shadow-brutalist'
