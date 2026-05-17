@@ -22,8 +22,8 @@ async function writeUsers(users: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
+    const { name, email, password } = await req.json();
+    if (!email || !password || !name) return NextResponse.json({ error: 'Missing name, email or password' }, { status: 400 });
 
     const users = await readUsers();
     if (users.find((u: any) => u.email === email)) {
@@ -31,11 +31,11 @@ export async function POST(req: Request) {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = { id: randomUUID(), email, password: hashed, created_at: new Date().toISOString() };
+    const user = { id: randomUUID(), name, email, password: hashed, created_at: new Date().toISOString() };
     users.push(user);
     await writeUsers(users);
 
-    return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
+    return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }

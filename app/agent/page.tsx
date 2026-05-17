@@ -1,7 +1,9 @@
-'use client';
+"use client";
 
 import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Archive, Radio, Zap, Copy, Check, X } from 'lucide-react';
 
@@ -253,10 +255,8 @@ function BriefingRoom({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
 // ============================================================================
 function OriginPoint({
   onCodeGenerated,
-  token,
 }: {
   onCodeGenerated: (drop: DeployedDrop) => void;
-  token?: string | null;
 }) {
   const [payloadType, setPayloadType] = useState<'text' | 'link'>('text');
   const [radiusIndex, setRadiusIndex] = useState(1);
@@ -309,6 +309,7 @@ function OriginPoint({
     // Try to POST to API; if not available, fallback to local behavior
     (async () => {
       try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch('/api/drops', {
           method: 'POST',
           headers: {
@@ -565,61 +566,16 @@ export default function AgentTerminal() {
   const [showBoot, setShowBoot] = useState(true);
   const [deployedDrops, setDeployedDrops] = useState<DeployedDrop[]>([]);
   const [selectedDrop, setSelectedDrop] = useState<DeployedDrop | null>(null);
-  const [token, setToken] = useState<string | null>(() => typeof window !== 'undefined' ? localStorage.getItem('token') : null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const router = useRouter();
 
-  // Small login/register component
-  function LoginBox() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [busy, setBusy] = useState(false);
-
-    const doAuth = async (mode: 'login' | 'register') => {
-      setBusy(true);
-      try {
-        const res = await fetch(`/api/auth/${mode}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        const j = await res.json();
-        if (!res.ok) {
-          alert(j.error || 'Auth error');
-          setBusy(false);
-          return;
-        }
-        if (mode === 'login') {
-          localStorage.setItem('token', j.token);
-          setToken(j.token);
-          setUserEmail(j.email);
-        } else {
-          alert('Registered. Now log in.');
-        }
-      } catch (e: any) {
-        alert(String(e));
-      } finally {
-        setBusy(false);
-      }
-    };
-
-    if (token) {
-      return (
-        <div className="text-xs">
-          <span className="mr-2">{userEmail ?? 'Logged in'}</span>
-          <button className="btn-brutalist px-2 py-1 text-xs" onClick={() => { localStorage.removeItem('token'); setToken(null); setUserEmail(null); }}>Logout</button>
-        </div>
-      );
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) router.replace('/login');
+    } catch (e) {
+      router.replace('/login');
     }
-
-    return (
-      <div className="flex gap-2 items-center">
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" className="input-brutalist text-xs" />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" className="input-brutalist text-xs" />
-        <button className="btn-brutalist px-3 py-1 text-xs" disabled={busy} onClick={() => doAuth('login')}>Login</button>
-        <button className="btn-brutalist px-3 py-1 text-xs" disabled={busy} onClick={() => doAuth('register')}>Register</button>
-      </div>
-    );
-  }
+  }, [router]);
 
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },
@@ -663,16 +619,13 @@ export default function AgentTerminal() {
       <main className="flex-1 relative overflow-y-auto pb-24 sm:pb-20 bg-white">
         <AnimatePresence mode="wait">
           {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
-          {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} token={token} />}
+          {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
           {activeTab === 'archive' && <ArchiveLogbook key="archive" deployedDrops={deployedDrops} />}
         </AnimatePresence>
       </main>
 
       {/* Bottom Navigation - Icons Only */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 sm:px-4 py-2 sm:py-3 flex justify-around gap-1 sm:gap-2">
-        <div className="absolute left-4 top-4">
-          <LoginBox />
-        </div>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

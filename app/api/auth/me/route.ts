@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     const user = users.find((u: any) => u.id === payload.sub);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    return NextResponse.json({ id: user.id, email: user.email });
+    return NextResponse.json({ id: user.id, email: user.email, name: user.name });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }
