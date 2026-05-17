@@ -3,6 +3,9 @@
 import React, { useEffect, useMemo } from 'react';
 import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 
+const LeafletMapContainer = MapContainer as React.ComponentType<any>;
+const LeafletCircleMarker = CircleMarker as React.ComponentType<any>;
+
 type LocationMapPickerProps = {
   lat: string;
   lng: string;
@@ -17,7 +20,7 @@ function parseCoordinate(value: string): number | null {
 
 function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({
-    click(event) {
+    click(event: any) {
       onPick(event.latlng.lat, event.latlng.lng);
     },
   });
@@ -71,7 +74,7 @@ export default function LocationMapPicker({ lat, lng, onPick, onClose }: Locatio
         <div className="divider-thick" />
 
         <div className="overflow-hidden border-2 border-black bg-zinc-100">
-          <MapContainer
+          <LeafletMapContainer
             center={center}
             zoom={zoom}
             scrollWheelZoom
@@ -87,13 +90,13 @@ export default function LocationMapPicker({ lat, lng, onPick, onClose }: Locatio
               }}
             />
             {selectedLat !== null && selectedLng !== null && (
-              <CircleMarker
+              <LeafletCircleMarker
                 center={[selectedLat, selectedLng]}
                 radius={10}
                 pathOptions={{ color: '#ea580c', fillColor: '#ea580c', fillOpacity: 0.25, weight: 2 }}
               />
             )}
-          </MapContainer>
+          </LeafletMapContainer>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 text-xs uppercase tracking-widest">
