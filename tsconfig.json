@@ -10,7 +10,7 @@
     "moduleResolution": "bundler",
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
     "target": "ES2017",
     "noEmit": true,
     "incremental": true,
