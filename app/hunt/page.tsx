@@ -20,6 +20,8 @@ interface HuntState {
   code: string;
   dropFound: boolean;
   dropMessage: string;
+  discoveryRecorded: boolean;
+  permissionHint: string;
 }
 
 type HuntTab = 'tracking' | 'public' | 'myhunts';
@@ -41,6 +43,8 @@ export default function HuntPage() {
     code: '',
     dropFound: false,
     dropMessage: '',
+    discoveryRecorded: false,
+    permissionHint: '',
   });
 
   const [activeTab, setActiveTab] = useState<HuntTab>('tracking');
@@ -84,7 +88,7 @@ export default function HuntPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/compass', {
+      const res = await fetch('/api/compass/target', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,8 +96,6 @@ export default function HuntPage() {
         },
         body: JSON.stringify({
           code: hunt.code.trim(),
-          lat: hunt.userLat,
-          lng: hunt.userLng,
         }),
       });
 
@@ -101,10 +103,12 @@ export default function HuntPage() {
       if (res.ok) {
         setHunt((prev) => ({
           ...prev,
-          targetLat: data.drop.lat,
-          targetLng: data.drop.lng,
+          targetLat: data.target.lat,
+          targetLng: data.target.lng,
           dropFound: true,
-          dropMessage: data.drop.message || 'No message',
+          dropMessage: '',
+          discoveryRecorded: false,
+          isUnlocked: false,
         }));
       } else {
         alert(data.error || 'Drop not found');
@@ -118,6 +122,15 @@ export default function HuntPage() {
   // Request Location Permission
   const requestLocationPermission = async () => {
     try {
+      if (!window.isSecureContext) {
+        setHunt((prev) => ({
+          ...prev,
+          locationPermission: 'denied',
+          permissionHint: 'Permissions require HTTPS on mobile. Open this app via https:// or localhost.',
+        }));
+        return;
+      }
+
       if (!('geolocation' in navigator)) {
         setHunt((prev) => ({ ...prev, locationPermission: 'denied' }));
         return;
@@ -134,54 +147,94 @@ export default function HuntPage() {
           }));
         },
         (error) => {
-          setHunt((prev) => ({ ...prev, locationPermission: 'denied' }));
+          setHunt((prev) => ({
+            ...prev,
+            locationPermission: 'denied',
+            permissionHint: error?.message || 'Location permission denied',
+          }));
           console.error('Geolocation error:', error);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } catch (e) {
-      setHunt((prev) => ({ ...prev, locationPermission: 'denied' }));
+      setHunt((prev) => ({
+        ...prev,
+        locationPermission: 'denied',
+        permissionHint: 'Unable to request location permission',
+      }));
     }
   };
 
   // Request Device Orientation Permission (iOS 13+)
   const requestOrientationPermission = async () => {
     try {
+      if (!window.isSecureContext) {
+        setHunt((prev) => ({
+          ...prev,
+          orientationPermission: 'denied',
+          permissionHint: 'Compass permission requires HTTPS on mobile.',
+        }));
+        return;
+      }
+
       if (typeof (DeviceOrientationEvent as any)?.requestPermission === 'function') {
         // iOS 13+ requires explicit permission
         const permission = await (DeviceOrientationEvent as any).requestPermission();
         if (permission === 'granted') {
-          setHunt((prev) => ({ ...prev, orientationPermission: 'granted' }));
+          setHunt((prev) => ({ ...prev, orientationPermission: 'granted', permissionHint: '' }));
           window.addEventListener('deviceorientation', handleDeviceOrientation);
         } else {
-          setHunt((prev) => ({ ...prev, orientationPermission: 'denied' }));
+          setHunt((prev) => ({
+            ...prev,
+            orientationPermission: 'denied',
+            permissionHint: 'Compass permission denied',
+          }));
         }
       } else {
         // Android and older iOS - auto-listen
-        setHunt((prev) => ({ ...prev, orientationPermission: 'granted', hasDeviceOrientation: true }));
+        setHunt((prev) => ({ ...prev, orientationPermission: 'granted', hasDeviceOrientation: true, permissionHint: '' }));
         window.addEventListener('deviceorientation', handleDeviceOrientation);
       }
     } catch (e) {
-      setHunt((prev) => ({ ...prev, orientationPermission: 'denied' }));
+      setHunt((prev) => ({
+        ...prev,
+        orientationPermission: 'denied',
+        permissionHint: 'Unable to request compass permission',
+      }));
     }
   };
 
   // Request Motion Permission (iOS 13+)
   const requestMotionPermission = async () => {
     try {
+      if (!window.isSecureContext) {
+        setHunt((prev) => ({
+          ...prev,
+          permissionHint: 'Motion permission requires HTTPS on mobile.',
+        }));
+        return;
+      }
+
       if (typeof (DeviceMotionEvent as any)?.requestPermission === 'function') {
         const permission = await (DeviceMotionEvent as any).requestPermission();
         if (permission === 'granted') {
-          setHunt((prev) => ({ ...prev, hasAccelerometer: true }));
+          setHunt((prev) => ({ ...prev, hasAccelerometer: true, permissionHint: '' }));
           window.addEventListener('devicemotion', handleDeviceMotion);
         }
       } else {
-        setHunt((prev) => ({ ...prev, hasAccelerometer: true }));
+        setHunt((prev) => ({ ...prev, hasAccelerometer: true, permissionHint: '' }));
         window.addEventListener('devicemotion', handleDeviceMotion);
       }
     } catch (e) {
+      setHunt((prev) => ({ ...prev, permissionHint: 'Unable to request motion permission' }));
       console.error('Motion permission error:', e);
     }
+  };
+
+  const requestAllPermissions = async () => {
+    await requestLocationPermission();
+    await requestOrientationPermission();
+    await requestMotionPermission();
   };
 
   // Handle device orientation (compass/bearing)
@@ -234,6 +287,52 @@ export default function HuntPage() {
     }
   }, [hunt.userLat, hunt.userLng, hunt.targetLat, hunt.targetLng]);
 
+  // Record discovery only when player reaches the unlock threshold.
+  useEffect(() => {
+    const recordDiscovery = async () => {
+      if (!hunt.code.trim() || hunt.userLat == null || hunt.userLng == null) return;
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/compass', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            code: hunt.code.trim(),
+            lat: hunt.userLat,
+            lng: hunt.userLng,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          setHunt((prev) => ({
+            ...prev,
+            discoveryRecorded: true,
+            dropMessage: data?.drop?.message || '',
+          }));
+          return;
+        }
+
+        if (res.status === 400 && String(data?.error || '').toLowerCase().includes('already found')) {
+          setHunt((prev) => ({
+            ...prev,
+            discoveryRecorded: true,
+            dropMessage: data?.drop?.message || prev.dropMessage,
+          }));
+        }
+      } catch (err) {
+        console.error('Error recording discovery:', err);
+      }
+    };
+
+    if (hunt.dropFound && hunt.isUnlocked && !hunt.discoveryRecorded) {
+      recordDiscovery();
+    }
+  }, [hunt.dropFound, hunt.isUnlocked, hunt.discoveryRecorded, hunt.code, hunt.userLat, hunt.userLng]);
+
   const getSignalColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'text-orange-600' : 'text-zinc-900');
   const getBgColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'bg-orange-600/5' : 'bg-white');
   const getBorderColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'border-orange-600' : 'border-black');
@@ -260,6 +359,14 @@ export default function HuntPage() {
               {/* Code Input */}
               <div className="card-field space-y-2 border-2 border-black bg-white">
                 <label className="text-xs uppercase tracking-widest font-bold">Enter Drop Code</label>
+                {(hunt.locationPermission !== 'granted' || hunt.orientationPermission !== 'granted') && (
+                  <button
+                    onClick={requestAllPermissions}
+                    className="w-full border-2 border-black py-2 bg-black text-white text-xs uppercase tracking-widest font-bold"
+                  >
+                    Enable Hunt Sensors
+                  </button>
+                )}
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -278,8 +385,13 @@ export default function HuntPage() {
                   </button>
                 </div>
                 {hunt.dropFound && (
-                  <div className="text-xs bg-green-600/10 border-2 border-green-600 text-green-700 p-2 font-bold">
-                    Target Found: {hunt.dropMessage}
+                  <div className="text-xs bg-zinc-100 border-2 border-zinc-300 text-zinc-700 p-2 font-bold uppercase tracking-widest">
+                    Hunt Started. Track the signal.
+                  </div>
+                )}
+                {hunt.permissionHint && (
+                  <div className="text-xs bg-amber-50 border-2 border-amber-400 text-amber-800 p-2 font-bold">
+                    {hunt.permissionHint}
                   </div>
                 )}
               </div>
@@ -406,6 +518,11 @@ export default function HuntPage() {
                       Payload Unlocked
                     </span>
                   </div>
+                  {hunt.dropMessage && (
+                    <div className="mt-2 text-xs text-center text-zinc-700 font-bold">
+                      {hunt.dropMessage}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
