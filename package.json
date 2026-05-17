@@ -10,10 +10,12 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
     "framer-motion": "^11.0.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "latest",
     "next": "^16.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",

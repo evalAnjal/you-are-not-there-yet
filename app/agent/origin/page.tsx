@@ -1,6 +1,9 @@
 "use client";
 
+import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
+
+const LocationMapPicker = dynamic(() => import('./LocationMapPicker'), { ssr: false });
 
 function generateCode(): string {
   const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -19,8 +22,10 @@ export default function OriginPage() {
   const [radiusIndex, setRadiusIndex] = useState(1);
   const [lastCode, setLastCode] = useState<string | null>(null);
   const [locStatus, setLocStatus] = useState<string | null>(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
+  const googleMapsUrl = lat && lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}` : 'https://www.google.com/maps';
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -78,18 +83,44 @@ export default function OriginPage() {
       <div className="card-field space-y-2">
         <div className="flex items-center justify-between">
           <div className="text-xs uppercase tracking-widest font-bold flex items-center gap-2">Origin Point</div>
-          <button onClick={useCurrentLocation} className="btn-brutalist px-3 py-1 text-xs">Use Current Location</button>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button onClick={() => setIsMapOpen(true)} className="btn-brutalist px-3 py-1 text-xs">
+              Pick on Map
+            </button>
+            <button onClick={useCurrentLocation} className="btn-brutalist px-3 py-1 text-xs">
+              Use Current Location
+            </button>
+          </div>
         </div>
         <div className="divider-thick"></div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-widest">
+          <span className="text-zinc-600">Type coordinates manually or open the map picker.</span>
+          <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="font-bold underline underline-offset-4">
+            Open in Google Maps
+          </a>
+        </div>
 
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           <label className="space-y-1">
             <div className="text-zinc-600 uppercase tracking-widest">LAT</div>
-            <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="40.7128" className="input-brutalist w-full" />
+            <input
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              placeholder="40.7128"
+              inputMode="decimal"
+              className="input-brutalist w-full"
+            />
           </label>
           <label className="space-y-1">
             <div className="text-zinc-600 uppercase tracking-widest">LNG</div>
-            <input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-74.0060" className="input-brutalist w-full" />
+            <input
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              placeholder="-74.0060"
+              inputMode="decimal"
+              className="input-brutalist w-full"
+            />
           </label>
         </div>
 
@@ -119,6 +150,19 @@ export default function OriginPage() {
           <div className="text-xs uppercase tracking-widest text-zinc-600">Unlock Code</div>
           <div className="text-3xl sm:text-5xl font-mono font-bold tracking-widest mt-2">{lastCode.slice(0,3)} - {lastCode.slice(3)}</div>
         </div>
+      )}
+
+      {isMapOpen && (
+        <LocationMapPicker
+          lat={lat}
+          lng={lng}
+          onPick={(nextLat, nextLng) => {
+            setLat(nextLat);
+            setLng(nextLng);
+            setLocStatus('Location selected on map');
+          }}
+          onClose={() => setIsMapOpen(false)}
+        />
       )}
     </div>
   );
