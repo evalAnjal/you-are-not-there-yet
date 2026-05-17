@@ -253,8 +253,9 @@ export default function HuntPage() {
       {/* Main Content */}
       <main className="flex-1 w-full flex flex-col overflow-y-auto pb-24 sm:pb-20">
         {activeTab === 'tracking' && (
-          <div className="flex flex-col items-center justify-center max-w-md gap-8 sm:gap-16 w-full mx-auto"
-        {/* Code Input */}
+          <div className="flex flex-col items-center justify-center w-full">
+            <div className="w-full max-w-md space-y-2 pt-4">
+              {/* Code Input */}
         <div className="card-field space-y-2 border-2 border-black bg-white">
           <label className="text-xs uppercase tracking-widest font-bold">🎯 Enter Drop Code</label>
           <div className="flex gap-2">
@@ -337,64 +338,62 @@ export default function HuntPage() {
             </button>
           )}
         </div>
-      </div>
+            </div>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center max-w-md gap-8 sm:gap-16 w-full">
-        {/* Distance Display */}
-        <div className="text-center w-full">
-          <div className={`card-field ${getBgColor()} border-2 ${getBorderColor()}`}>
-            <h1 className={`text-4xl sm:text-6xl font-bold ${getSignalColor()}`}>
-              {hunt.distance !== null ? hunt.distance : '--'}
-              <span className="text-lg sm:text-2xl ml-2">m</span>
-            </h1>
-            <div className="divider-thick my-3"></div>
-            <p className="text-xs uppercase tracking-widest text-zinc-600">
-              {hunt.isUnlocked ? '✓ TARGET REACHED' : '○ Distance to Target'}
-            </p>
-          </div>
-        </div>
+            {/* Distance Display */}
+            <div className="text-center w-full px-4 gap-8 sm:gap-16 flex flex-col items-center">
+              <div className={`card-field ${getBgColor()} border-2 ${getBorderColor()}`}>
+                <h1 className={`text-4xl sm:text-6xl font-bold ${getSignalColor()}`}>
+                  {hunt.distance !== null ? hunt.distance : '--'}
+                  <span className="text-lg sm:text-2xl ml-2">m</span>
+                </h1>
+                <div className="divider-thick my-3"></div>
+                <p className="text-xs uppercase tracking-widest text-zinc-600">
+                  {hunt.isUnlocked ? '✓ TARGET REACHED' : '○ Distance to Target'}
+                </p>
+              </div>
 
-        {/* Compass Circle with Real Bearing */}
-        <div className={`relative w-56 h-56 sm:w-72 sm:h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
-          {/* Cardinal Points */}
-          <div className="absolute inset-0 flex items-center justify-center font-bold text-xs">
-            <span className="absolute top-4">N</span>
-            <span className="absolute bottom-4">S</span>
-            <span className="absolute left-4">W</span>
-            <span className="absolute right-4">E</span>
-          </div>
+              {/* Compass Circle with Real Bearing */}
+              <div className={`relative w-56 h-56 sm:w-72 sm:h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
+                {/* Cardinal Points */}
+                <div className="absolute inset-0 flex items-center justify-center font-bold text-xs">
+                  <span className="absolute top-4">N</span>
+                  <span className="absolute bottom-4">S</span>
+                  <span className="absolute left-4">W</span>
+                  <span className="absolute right-4">E</span>
+                </div>
 
-          {/* Rotating Bearing Indicator (from device orientation) */}
-          <motion.div
-            animate={{ rotate: hunt.bearing ?? 0 }}
-            transition={{ duration: 0.1, type: 'tween' }}
-            className="absolute w-full h-full flex items-start justify-center pt-8"
-          >
-            <div className={`${getSignalColor()}`}>
-              {hunt.isUnlocked ? (
-                <Unlock className="w-6 h-6" strokeWidth={3} />
-              ) : (
-                <Lock className="w-6 h-6" strokeWidth={3} />
+                {/* Rotating Bearing Indicator (from device orientation) */}
+                <motion.div
+                  animate={{ rotate: hunt.bearing ?? 0 }}
+                  transition={{ duration: 0.1, type: 'tween' }}
+                  className="absolute w-full h-full flex items-start justify-center pt-8"
+                >
+                  <div className={`${getSignalColor()}`}>
+                    {hunt.isUnlocked ? (
+                      <Unlock className="w-6 h-6" strokeWidth={3} />
+                    ) : (
+                      <Lock className="w-6 h-6" strokeWidth={3} />
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* Center Crosshair */}
+                <div className="w-4 h-4 bg-black border-2 border-white z-10"></div>
+              </div>
+
+              {/* Unlock Message */}
+              {hunt.isUnlocked && (
+                <div className="card-field w-full bg-orange-600/5 border-2 border-orange-600">
+                  <div className="flex items-center gap-2 justify-center">
+                    <Unlock className="w-5 h-5 text-orange-600" />
+                    <span className="text-xs uppercase tracking-widest font-bold text-orange-600">
+                      Payload Unlocked
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
-          </motion.div>
-
-          {/* Center Crosshair */}
-          <div className="w-4 h-4 bg-black border-2 border-white z-10"></div>
-        </div>
-
-        {/* Unlock Message */}
-        {hunt.isUnlocked && (
-          <div className="card-field w-full bg-orange-600/5 border-2 border-orange-600">
-            <div className="flex items-center gap-2 justify-center">
-              <Unlock className="w-5 h-5 text-orange-600" />
-              <span className="text-xs uppercase tracking-widest font-bold text-orange-600">
-                Payload Unlocked
-              </span>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* Info Footer */}
@@ -412,6 +411,88 @@ export default function HuntPage() {
           </div>
         </div>
       </div>
+          </div>
+        )}
+
+        {activeTab === 'public' && (
+          <div className="w-full max-w-md p-4">
+            <div className="card-field text-center py-12 border-2 border-zinc-300">
+              <div className="text-4xl mb-4">🌍</div>
+              <div className="text-xs uppercase tracking-widest font-bold text-zinc-600 mb-2">Public Hunts</div>
+              <div className="text-xs text-zinc-500">Coming soon...</div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'myhunts' && (
+          <div className="w-full max-w-md p-4 space-y-3">
+            {discoveries.length > 0 ? (
+              discoveries.map((d) => (
+                <div key={d.id} className="card-field space-y-2 border-2 border-black">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest">🎯 {d.message || 'Unknown Drop'}</div>
+                      <div className="text-xs text-zinc-600 font-mono mt-1">
+                        {d.lat?.toFixed(4)}, {d.lng?.toFixed(4)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-green-600 font-bold">
+                        {d.distance_at_find ? (d.distance_at_find * 1000).toFixed(0) + 'm' : '—'}
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        {new Date(d.found_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="card-field text-center py-12 border-2 border-zinc-300">
+                <div className="text-4xl mb-4">📦</div>
+                <div className="text-xs uppercase tracking-widest font-bold text-zinc-600">No hunts yet</div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 sm:px-4 py-2 sm:py-3 flex justify-around gap-1 sm:gap-2">
+        <button
+          onClick={() => setActiveTab('tracking')}
+          className={`p-2 sm:p-3 border-2 transition-all ${
+            activeTab === 'tracking'
+              ? 'border-black bg-orange-600 text-white shadow-brutalist'
+              : 'border-black bg-white text-black'
+          }`}
+          title="Tracking"
+        >
+          <Compass className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+        </button>
+        <button
+          onClick={() => setActiveTab('public')}
+          className={`p-2 sm:p-3 border-2 transition-all ${
+            activeTab === 'public'
+              ? 'border-black bg-orange-600 text-white shadow-brutalist'
+              : 'border-black bg-white text-black'
+          }`}
+          title="Public Hunts"
+        >
+          <Globe className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+        </button>
+        <button
+          onClick={() => setActiveTab('myhunts')}
+          className={`p-2 sm:p-3 border-2 transition-all ${
+            activeTab === 'myhunts'
+              ? 'border-black bg-orange-600 text-white shadow-brutalist'
+              : 'border-black bg-white text-black'
+          }`}
+          title="My Hunts"
+        >
+          <BookMarked className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+        </button>
+      </nav>
     </div>
   );
 }
