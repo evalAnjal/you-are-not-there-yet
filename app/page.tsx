@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Unlock, Activity } from 'lucide-react';
+import Link from 'next/link';
 
 interface DeadDropState {
   distance: number;
@@ -92,6 +93,16 @@ export default function DeadDropHunter() {
 
       {/* Footer Controls */}
       <div className="w-full space-y-3 sm:space-y-4 pb-2">
+        {/* Hunt Mode Button */}
+        <Link href="/hunt">
+          <button className="w-full card-field border-2 border-orange-600 bg-orange-600/5 hover:bg-orange-600/10 active:translate-x-[1px] active:translate-y-[1px] py-3">
+            <div className="text-xs uppercase tracking-widest font-bold text-orange-600 flex items-center justify-center gap-2">
+              <Activity className="w-4 h-4" />
+              Enter Hunt Mode (Real Sensors)
+            </div>
+          </button>
+        </Link>
+
         {/* Distance Slider */}
         <div className="card-field space-y-3">
           <label className="text-xs uppercase tracking-widest font-bold">Distance Sensor</label>

@@ -52,7 +52,7 @@ async function init() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS drops (
         id uuid PRIMARY KEY,
-        code text,
+        code text UNIQUE,
         lat numeric,
         lng numeric,
         radius text,
@@ -60,6 +60,17 @@ async function init() {
         status text DEFAULT 'active',
         created_by uuid,
         created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    
+    // Create discoveries table to track when users find drops
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS discoveries (
+        id uuid PRIMARY KEY,
+        drop_id uuid,
+        found_by uuid,
+        distance_at_find numeric,
+        found_at timestamptz NOT NULL DEFAULT now()
       );
     `);
     

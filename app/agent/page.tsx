@@ -5,11 +5,12 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Archive, Radio, Zap, Copy, Check, X } from 'lucide-react';
+import { MapPin, Archive, Radio, Zap, Copy, Check, X, Compass } from 'lucide-react';
 
 const LocationMapPicker = dynamic(() => import('./origin/LocationMapPicker'), { ssr: false });
+const CompassUI = dynamic(() => import('./compass/CompassUI'), { ssr: false });
 
-type ScreenTab = 'briefing' | 'origin' | 'archive';
+type ScreenTab = 'briefing' | 'origin' | 'archive' | 'compass';
 
 interface DeployedDrop {
   code: string;
@@ -627,6 +628,7 @@ export default function AgentTerminal() {
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },
     { id: 'origin', icon: MapPin, label: 'Origin' },
+    { id: 'compass', icon: Compass, label: 'Compass' },
     { id: 'archive', icon: Archive, label: 'Archive' },
   ] as const;
 
@@ -663,10 +665,11 @@ export default function AgentTerminal() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 relative overflow-y-auto pb-24 sm:pb-20 bg-white">
+      <main className="flex-1 relative overflow-y-auto pb-24 sm:pb-20 bg-white flex items-start justify-center">
         <AnimatePresence mode="wait">
           {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
           {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
+          {activeTab === 'compass' && <div className="w-full pt-6 px-4"><CompassUI key="compass" /></div>}
           {activeTab === 'archive' && <ArchiveLogbook key="archive" deployedDrops={deployedDrops} />}
         </AnimatePresence>
       </main>
