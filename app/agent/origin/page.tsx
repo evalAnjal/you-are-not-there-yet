@@ -17,8 +17,8 @@ function generateCode(): string {
 
 export default function OriginPage() {
   const [message, setMessage] = useState('');
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
+  const [lat, setLat] = useState('26.664488');
+  const [lng, setLng] = useState('87.274876');
   const [radiusIndex, setRadiusIndex] = useState(1);
   const [lastCode, setLastCode] = useState<string | null>(null);
   const [locStatus, setLocStatus] = useState<string | null>(null);
@@ -26,6 +26,7 @@ export default function OriginPage() {
 
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
   const googleMapsUrl = lat && lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}` : 'https://www.google.com/maps';
+  const locationLabel = 'Itahari, Nepal';
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -95,7 +96,7 @@ export default function OriginPage() {
         <div className="divider-thick"></div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-widest">
-          <span className="text-zinc-600">Type coordinates manually or open the map picker.</span>
+          <span className="text-zinc-600">Default: {locationLabel}. Type coordinates manually or open the map picker.</span>
           <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="font-bold underline underline-offset-4">
             Open in Google Maps
           </a>

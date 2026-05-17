@@ -1,8 +1,11 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Archive, Radio, Zap, Copy, Check, X } from 'lucide-react';
+
+const LocationMapPicker = dynamic(() => import('./origin/LocationMapPicker'), { ssr: false });
 
 type ScreenTab = 'briefing' | 'origin' | 'archive';
 
@@ -256,22 +259,48 @@ function OriginPoint({
   const [payloadType, setPayloadType] = useState<'text' | 'link'>('text');
   const [radiusIndex, setRadiusIndex] = useState(1);
   const [message, setMessage] = useState('');
+  const [lat, setLat] = useState('26.664488');
+  const [lng, setLng] = useState('87.274876');
+  const [locStatus, setLocStatus] = useState<string | null>(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
+  const locationLabel = 'Itahari, Nepal';
 
-  const mockLat = '40.7128';
-  const mockLng = '-74.0060';
+  const googleMapsUrl = lat && lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}` : 'https://www.google.com/maps';
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocStatus('Geolocation not supported');
+      return;
+    }
+
+    setLocStatus('Acquiring...');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(position.coords.latitude.toFixed(6));
+        setLng(position.coords.longitude.toFixed(6));
+        setLocStatus('Location set');
+      },
+      () => {
+        setLocStatus('Permission denied');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const handleDeploy = () => {
     if (!message.trim()) return;
 
     const now = new Date();
     const timestamp = now.toISOString().split('T')[0] + ' ' + now.toTimeString().split(' ')[0];
+    const finalLat = lat || '40.712800';
+    const finalLng = lng || '-74.006000';
 
     const drop: DeployedDrop = {
       code: generateCode(),
       timestamp,
-      lat: mockLat,
-      lng: mockLng,
+      lat: finalLat,
+      lng: finalLng,
       radius: radiusOptions[radiusIndex],
       message,
     };
@@ -290,21 +319,50 @@ function OriginPoint({
     >
       {/* Location Display */}
       <div className="card-field space-y-2">
-        <div className="text-xs uppercase tracking-widest font-bold flex items-center gap-2">
-          <MapPin className="w-4 h-4" />
-          Current Location
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs uppercase tracking-widest font-bold flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            Origin Point
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setIsMapOpen(true)} className="btn-brutalist px-3 py-1 text-xs">
+              Pick on Map
+            </button>
+            <button onClick={useCurrentLocation} className="btn-brutalist px-3 py-1 text-xs">
+              Use Current Location
+            </button>
+          </div>
         </div>
         <div className="divider-thick"></div>
-        <div className="space-y-1 font-mono text-xs">
-          <div className="flex justify-between">
-            <span className="text-zinc-600">LAT</span>
-            <span className="font-bold">{mockLat}°N</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-zinc-600">LNG</span>
-            <span className="font-bold">{mockLng}°W</span>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-widest">
+          <span className="text-zinc-600">Default: {locationLabel}. Type coordinates manually or open the map picker.</span>
+          <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="font-bold underline underline-offset-4">
+            Open in Google Maps
+          </a>
         </div>
+        <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+          <label className="space-y-1">
+            <div className="text-zinc-600 uppercase tracking-widest">LAT</div>
+            <input
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              placeholder="40.7128"
+              inputMode="decimal"
+              className="input-brutalist w-full"
+            />
+          </label>
+          <label className="space-y-1">
+            <div className="text-zinc-600 uppercase tracking-widest">LNG</div>
+            <input
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              placeholder="-74.0060"
+              inputMode="decimal"
+              className="input-brutalist w-full"
+            />
+          </label>
+        </div>
+        {locStatus && <div className="text-xs text-zinc-600">{locStatus}</div>}
       </div>
 
       {/* Payload Type Toggle */}
@@ -366,6 +424,19 @@ function OriginPoint({
       >
         Deploy Payload
       </button>
+
+      {isMapOpen && (
+        <LocationMapPicker
+          lat={lat}
+          lng={lng}
+          onPick={(nextLat, nextLng) => {
+            setLat(nextLat);
+            setLng(nextLng);
+            setLocStatus('Location selected on map');
+          }}
+          onClose={() => setIsMapOpen(false)}
+        />
+      )}
     </motion.div>
   );
 }
