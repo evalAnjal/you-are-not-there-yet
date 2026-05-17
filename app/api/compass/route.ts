@@ -85,6 +85,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // If the drop has been marked found already, prevent other users from finding it
+    if (drop.status === 'found') {
+      console.info('[COMPASS] Drop already marked found, rejecting', { drop_id: drop.id });
+      return NextResponse.json({ error: 'Drop already found' }, { status: 400 });
+    }
+
     // Record discovery
     const discovery_id = randomUUID();
     console.info('[COMPASS] Recording discovery', { discovery_id, drop_id: drop.id, found_by, distance_at_find });
@@ -95,6 +101,13 @@ export async function POST(req: Request) {
     );
 
     console.info('[COMPASS] Discovery recorded successfully', { discovery_id });
+
+    // Mark the drop as found so others cannot claim it
+    try {
+      await query('UPDATE drops SET status = $1 WHERE id = $2', ['found', drop.id]);
+    } catch (updErr: any) {
+      console.error('[COMPASS] Failed to update drop status after discovery', { err: updErr?.message || String(updErr) });
+    }
 
     return NextResponse.json(
       {

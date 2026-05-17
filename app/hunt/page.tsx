@@ -102,33 +102,35 @@ export default function HuntPage() {
     localStorage.setItem(HUNT_STATE_KEY, JSON.stringify(payload));
   }, [hunt.code, hunt.targetLat, hunt.targetLng, hunt.dropFound, hunt.dropMessage, hunt.discoveryRecorded]);
 
-  // Fetch user's discoveries on mount
-  useEffect(() => {
-    const fetchDiscoveries = async () => {
-      const token = localStorage.getItem('token');
-      try {
-        const res = await fetch('/api/compass', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const normalized = Array.isArray(data)
-            ? data.map((d: any) => ({
-                ...d,
-                lat: d.lat != null ? parseFloat(d.lat) : d.lat,
-                lng: d.lng != null ? parseFloat(d.lng) : d.lng,
-                distance_at_find: d.distance_at_find != null ? Number(d.distance_at_find) : d.distance_at_find,
-              }))
-            : [];
-          setDiscoveries(normalized);
-        }
-      } catch (err) {
-        console.error('Error fetching discoveries:', err);
+  // Fetch user's discoveries (callable so we can refresh after recording a find)
+  const fetchDiscoveries = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('/api/compass', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const normalized = Array.isArray(data)
+          ? data.map((d: any) => ({
+              ...d,
+              lat: d.lat != null ? parseFloat(d.lat) : d.lat,
+              lng: d.lng != null ? parseFloat(d.lng) : d.lng,
+              distance_at_find: d.distance_at_find != null ? Number(d.distance_at_find) : d.distance_at_find,
+            }))
+          : [];
+        setDiscoveries(normalized);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching discoveries:', err);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
     fetchDiscoveries();
   }, []);
 
@@ -365,6 +367,26 @@ export default function HuntPage() {
             discoveryRecorded: true,
             dropMessage: data?.drop?.message || '',
           }));
+          // Append the newly recorded discovery to the list so UI updates immediately
+          try {
+            const disc = data?.discovery;
+            const drop = data?.drop;
+            if (disc && drop) {
+              const newEntry = {
+                ...disc,
+                lat: drop.lat != null ? parseFloat(drop.lat) : drop.lat,
+                lng: drop.lng != null ? parseFloat(drop.lng) : drop.lng,
+                distance_at_find: disc.distance_at_find != null ? Number(disc.distance_at_find) : disc.distance_at_find,
+                message: drop.message || drop.message,
+              };
+              setDiscoveries((prev) => [newEntry, ...(prev || [])]);
+            } else {
+              // fallback: re-fetch full list
+              fetchDiscoveries();
+            }
+          } catch (e) {
+            fetchDiscoveries();
+          }
           return;
         }
 
@@ -374,6 +396,8 @@ export default function HuntPage() {
             discoveryRecorded: true,
             dropMessage: data?.drop?.message || prev.dropMessage,
           }));
+          // ensure discoveries list is up-to-date
+          fetchDiscoveries();
         }
       } catch (err) {
         console.error('Error recording discovery:', err);
@@ -396,7 +420,13 @@ export default function HuntPage() {
       {/* Header */}
       <header className="w-full flex justify-between items-center py-3 sm:py-4 border-b-2 border-black">
         <span className="text-xs tracking-widest uppercase font-bold">
-          {activeTab === 'tracking' ? '🎯 Real Hunt Mode' : activeTab === 'public' ? '🌍 Public Hunts' : '📋 My Hunts'}
+          {activeTab === 'tracking' ? (
+            <span className="inline-flex items-center gap-2"><Compass className="w-3 h-3" /> Hunt Mode</span>
+          ) : activeTab === 'public' ? (
+            <span className="inline-flex items-center gap-2"><Globe className="w-3 h-3" />Public Hunts</span>
+          ) : (
+            <span className="inline-flex items-center gap-2"><BookMarked className="w-3 h-3" />My Hunts</span>
+          )}
         </span>
         <div className={`text-xs border-2 ${hunt.isMoving && activeTab === 'tracking' ? 'border-orange-600 text-orange-600' : 'border-black'} px-2 sm:px-3 py-1 font-mono font-bold`}>
           {activeTab === 'tracking' ? (hunt.isMoving ? '◆ MOVING' : '○ STATIC') : activeTab === 'public' ? 'COMING SOON' : discoveries.length > 0 ? `✓ ${discoveries.length}` : '○ NONE'}
@@ -615,7 +645,7 @@ export default function HuntPage() {
                 <div key={d.id} className="card-field space-y-2 border-2 border-black">
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-widest">🎯 {d.message || 'Unknown Drop'}</div>
+                          <div className="text-xs font-bold uppercase tracking-widest"><Compass className="inline w-4 h-4 mr-2"/>{d.message || 'Unknown Drop'}</div>
                       <div className="text-xs text-zinc-600 font-mono mt-1">
                         {d.lat?.toFixed(4)}, {d.lng?.toFixed(4)}
                       </div>
@@ -633,7 +663,7 @@ export default function HuntPage() {
               ))
             ) : (
               <div className="card-field text-center py-12 border-2 border-zinc-300">
-                <div className="text-4xl mb-4">📦</div>
+                <div className="text-4xl mb-4"><BookMarked className="inline w-10 h-10"/></div>
                 <div className="text-xs uppercase tracking-widest font-bold text-zinc-600">No hunts yet</div>
               </div>
             )}

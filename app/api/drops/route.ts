@@ -63,9 +63,23 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const res = await query('SELECT * FROM drops ORDER BY created_at DESC');
+    // require authentication and return only drops created by the caller
+    const token = getTokenFromHeader(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    let payload: any;
+    try {
+      payload = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+    const created_by: string = payload.sub;
+
+    const res = await query('SELECT * FROM drops WHERE created_by = $1 ORDER BY created_at DESC', [created_by]);
     return NextResponse.json(res.rows || []);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
