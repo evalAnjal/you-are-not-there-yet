@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
     // check existing
     const exists = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (exists.rowCount > 0) return NextResponse.json({ error: 'User already exists' }, { status: 409 });
+    if (exists.rowCount != null && exists.rowCount > 0) return NextResponse.json({ error: 'User already exists' }, { status: 409 });
 
     const hashed = await bcrypt.hash(password, 10);
     const id = randomUUID();
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       [id, name, email, hashed]
     );
 
-    if (!res || res.rowCount === 0) {
+    if (!res || res.rowCount == null || res.rowCount === 0) {
       console.error('[REGISTER] DB insert returned no rows for user register', { email });
       return NextResponse.json({ error: 'Database did not return the created user' }, { status: 500 });
     }
