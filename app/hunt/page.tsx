@@ -237,9 +237,11 @@ export default function HuntPage() {
   const getSignalColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'text-orange-600' : 'text-zinc-900');
   const getBgColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'bg-orange-600/5' : 'bg-white');
   const getBorderColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'border-orange-600' : 'border-black');
+  const isMinimalTracking =
+    hunt.locationPermission === 'granted' && hunt.orientationPermission === 'granted';
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col items-center justify-between p-4 sm:p-6">
+    <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col items-center justify-between p-3 sm:p-4">
       {/* Header */}
       <header className="w-full flex justify-between items-center py-3 sm:py-4 border-b-2 border-black">
         <span className="text-xs tracking-widest uppercase font-bold">
@@ -253,95 +255,98 @@ export default function HuntPage() {
       {/* Main Content */}
       <main className="flex-1 w-full flex flex-col overflow-y-auto pb-24 sm:pb-20">
         {activeTab === 'tracking' && (
-          <div className="flex flex-col items-center justify-center w-full">
-            <div className="w-full max-w-md space-y-2 pt-4">
+          <div className="flex flex-col items-center justify-start w-full">
+            <div className="w-full max-w-md space-y-2 pt-3">
               {/* Code Input */}
-        <div className="card-field space-y-2 border-2 border-black bg-white">
-          <label className="text-xs uppercase tracking-widest font-bold">🎯 Enter Drop Code</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="e.g., ABC123"
-              value={hunt.code}
-              onChange={(e) => setHunt((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
-              className="flex-1 border-2 border-black px-3 py-2 text-xs uppercase tracking-widest font-mono"
-              maxLength={6}
-            />
-            <button
-              onClick={searchDropByCode}
-              disabled={!hunt.code.trim() || hunt.locationPermission !== 'granted'}
-              className="border-2 border-black px-3 py-2 bg-orange-600 text-white text-xs uppercase tracking-widest font-bold hover:bg-orange-700 disabled:bg-zinc-400 active:translate-x-[1px] active:translate-y-[1px]"
-            >
-              Search
-            </button>
-          </div>
-          {hunt.dropFound && (
-            <div className="text-xs bg-green-600/10 border-2 border-green-600 text-green-700 p-2 font-bold">
-              ✓ Target Found: {hunt.dropMessage}
-            </div>
-          )}
-        </div>
-        <div className="card-field space-y-2 border-2 border-black bg-white">
-          <div className="flex justify-between items-center">
-            <label className="text-xs uppercase tracking-widest font-bold">📍 Location Sensor</label>
-            <span className={`text-xs uppercase tracking-widest font-bold ${hunt.locationPermission === 'granted' ? 'text-green-600' : hunt.locationPermission === 'denied' ? 'text-red-600' : 'text-zinc-600'}`}>
-              {hunt.locationPermission === 'granted' ? '✓ ACTIVE' : hunt.locationPermission === 'denied' ? '✗ DENIED' : '○ PENDING'}
-            </span>
-          </div>
-          {hunt.locationPermission !== 'granted' && (
-            <button
-              onClick={requestLocationPermission}
-              className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
-            >
-              Request GPS Access
-            </button>
-          )}
-          {hunt.userLat && hunt.userLng && (
-            <div className="text-xs font-mono text-zinc-600">
-              {hunt.userLat.toFixed(5)}, {hunt.userLng.toFixed(5)}
-            </div>
-          )}
-        </div>
+              <div className="card-field space-y-2 border-2 border-black bg-white">
+                <label className="text-xs uppercase tracking-widest font-bold">Enter Drop Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g., ABC123"
+                    value={hunt.code}
+                    onChange={(e) => setHunt((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                    className="flex-1 border-2 border-black px-3 py-2 text-xs uppercase tracking-widest font-mono"
+                    maxLength={6}
+                  />
+                  <button
+                    onClick={searchDropByCode}
+                    disabled={!hunt.code.trim() || hunt.locationPermission !== 'granted'}
+                    className="border-2 border-black px-3 py-2 bg-orange-600 text-white text-xs uppercase tracking-widest font-bold hover:bg-orange-700 disabled:bg-zinc-400 active:translate-x-[1px] active:translate-y-[1px]"
+                  >
+                    Search
+                  </button>
+                </div>
+                {hunt.dropFound && (
+                  <div className="text-xs bg-green-600/10 border-2 border-green-600 text-green-700 p-2 font-bold">
+                    Target Found: {hunt.dropMessage}
+                  </div>
+                )}
+              </div>
 
-        {/* Orientation Permission */}
-        <div className="card-field space-y-2 border-2 border-black bg-white">
-          <div className="flex justify-between items-center">
-            <label className="text-xs uppercase tracking-widest font-bold">🧭 Compass Sensor</label>
-            <span className={`text-xs uppercase tracking-widest font-bold ${hunt.orientationPermission === 'granted' ? 'text-green-600' : hunt.orientationPermission === 'denied' ? 'text-red-600' : 'text-zinc-600'}`}>
-              {hunt.orientationPermission === 'granted' ? '✓ ACTIVE' : hunt.orientationPermission === 'denied' ? '✗ DENIED' : '○ PENDING'}
-            </span>
-          </div>
-          {hunt.orientationPermission !== 'granted' && (
-            <button
-              onClick={requestOrientationPermission}
-              className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
-            >
-              Request Device Orientation
-            </button>
-          )}
-        </div>
+              {!isMinimalTracking && (
+                <>
+                  <div className="card-field space-y-2 border-2 border-black bg-white">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs uppercase tracking-widest font-bold">Location Sensor</label>
+                      <span className={`text-xs uppercase tracking-widest font-bold ${hunt.locationPermission === 'granted' ? 'text-green-600' : hunt.locationPermission === 'denied' ? 'text-red-600' : 'text-zinc-600'}`}>
+                        {hunt.locationPermission === 'granted' ? 'ACTIVE' : hunt.locationPermission === 'denied' ? 'DENIED' : 'PENDING'}
+                      </span>
+                    </div>
+                    {hunt.locationPermission !== 'granted' && (
+                      <button
+                        onClick={requestLocationPermission}
+                        className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
+                      >
+                        Request GPS Access
+                      </button>
+                    )}
+                    {hunt.userLat && hunt.userLng && (
+                      <div className="text-xs font-mono text-zinc-600">
+                        {hunt.userLat.toFixed(5)}, {hunt.userLng.toFixed(5)}
+                      </div>
+                    )}
+                  </div>
 
-        {/* Motion Permission */}
-        <div className="card-field space-y-2 border-2 border-black bg-white">
-          <div className="flex justify-between items-center">
-            <label className="text-xs uppercase tracking-widest font-bold">⚡ Motion Sensor</label>
-            <span className={`text-xs uppercase tracking-widest font-bold ${hunt.hasAccelerometer ? 'text-green-600' : 'text-zinc-600'}`}>
-              {hunt.hasAccelerometer ? '✓ ACTIVE' : '○ AVAILABLE'}
-            </span>
-          </div>
-          {!hunt.hasAccelerometer && (
-            <button
-              onClick={requestMotionPermission}
-              className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
-            >
-              Request Motion Access
-            </button>
-          )}
-        </div>
+                  <div className="card-field space-y-2 border-2 border-black bg-white">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs uppercase tracking-widest font-bold">Compass Sensor</label>
+                      <span className={`text-xs uppercase tracking-widest font-bold ${hunt.orientationPermission === 'granted' ? 'text-green-600' : hunt.orientationPermission === 'denied' ? 'text-red-600' : 'text-zinc-600'}`}>
+                        {hunt.orientationPermission === 'granted' ? 'ACTIVE' : hunt.orientationPermission === 'denied' ? 'DENIED' : 'PENDING'}
+                      </span>
+                    </div>
+                    {hunt.orientationPermission !== 'granted' && (
+                      <button
+                        onClick={requestOrientationPermission}
+                        className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
+                      >
+                        Request Device Orientation
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="card-field space-y-2 border-2 border-black bg-white">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs uppercase tracking-widest font-bold">Motion Sensor</label>
+                      <span className={`text-xs uppercase tracking-widest font-bold ${hunt.hasAccelerometer ? 'text-green-600' : 'text-zinc-600'}`}>
+                        {hunt.hasAccelerometer ? 'ACTIVE' : 'AVAILABLE'}
+                      </span>
+                    </div>
+                    {!hunt.hasAccelerometer && (
+                      <button
+                        onClick={requestMotionPermission}
+                        className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
+                      >
+                        Request Motion Access
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Distance Display */}
-            <div className="text-center w-full px-4 gap-8 sm:gap-16 flex flex-col items-center">
+            <div className={`text-center w-full px-2 ${isMinimalTracking ? 'pt-3 gap-4' : 'pt-2 gap-8 sm:gap-16'} flex flex-col items-center`}>
               <div className={`card-field ${getBgColor()} border-2 ${getBorderColor()}`}>
                 <h1 className={`text-4xl sm:text-6xl font-bold ${getSignalColor()}`}>
                   {hunt.distance !== null ? hunt.distance : '--'}
@@ -352,6 +357,16 @@ export default function HuntPage() {
                   {hunt.isUnlocked ? '✓ TARGET REACHED' : '○ Distance to Target'}
                 </p>
               </div>
+
+              {isMinimalTracking && (
+                <div className="w-full max-w-md grid grid-cols-3 gap-2 text-[10px] uppercase tracking-widest">
+                  <div className="border-2 border-black py-2">GPS OK</div>
+                  <div className="border-2 border-black py-2">COMPASS OK</div>
+                  <div className={`border-2 py-2 ${hunt.isMoving ? 'border-orange-600 text-orange-600' : 'border-black'}`}>
+                    {hunt.isMoving ? 'MOVING' : 'STATIC'}
+                  </div>
+                </div>
+              )}
 
               {/* Compass Circle with Real Bearing */}
               <div className={`relative w-56 h-56 sm:w-72 sm:h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
@@ -394,24 +409,24 @@ export default function HuntPage() {
                 </div>
               )}
             </div>
-      </main>
 
-      {/* Info Footer */}
-      <div className="w-full max-w-md space-y-2 pb-2">
-        <div className="card-field text-xs space-y-1 bg-zinc-50 border-2 border-zinc-300">
-          <div className="font-bold uppercase">Sensor Status</div>
-          <div className="font-mono text-zinc-600">
-            {hunt.locationPermission === 'granted' && hunt.userLat ? `Loc: ${hunt.distance}m away` : 'Waiting for location...'}
-          </div>
-          <div className="font-mono text-zinc-600">
-            {hunt.orientationPermission === 'granted' && hunt.bearing ? `Bearing: ${hunt.bearing}°` : 'Waiting for compass...'}
-          </div>
-          <div className="font-mono text-zinc-600">
-            {hunt.hasAccelerometer ? `Motion: ${hunt.isMoving ? 'ACTIVE' : 'IDLE'}` : 'Accelerometer inactive'}
-          </div>
-        </div>
-      </div>
-          </div>
+            {!isMinimalTracking && (
+              <div className="w-full max-w-md space-y-2 pb-2">
+                <div className="card-field text-xs space-y-1 bg-zinc-50 border-2 border-zinc-300">
+                  <div className="font-bold uppercase">Sensor Status</div>
+                  <div className="font-mono text-zinc-600">
+                    {hunt.locationPermission === 'granted' && hunt.userLat ? `Loc: ${hunt.distance}m away` : 'Waiting for location...'}
+                  </div>
+                  <div className="font-mono text-zinc-600">
+                    {hunt.orientationPermission === 'granted' && hunt.bearing ? `Bearing: ${hunt.bearing}°` : 'Waiting for compass...'}
+                  </div>
+                  <div className="font-mono text-zinc-600">
+                    {hunt.hasAccelerometer ? `Motion: ${hunt.isMoving ? 'ACTIVE' : 'IDLE'}` : 'Accelerometer inactive'}
+                  </div>
+                </div>
+              </div>
+            )}
+            </div>
         )}
 
         {activeTab === 'public' && (
@@ -455,13 +470,13 @@ export default function HuntPage() {
             )}
           </div>
         )}
-      </main>
 
       {/* Bottom Navigation Bar */}
+        </main>
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 sm:px-4 py-2 sm:py-3 flex justify-around gap-1 sm:gap-2">
         <button
           onClick={() => setActiveTab('tracking')}
-          className={`p-2 sm:p-3 border-2 transition-all ${
+          className={`min-w-[84px] p-2 border-2 transition-all flex flex-col items-center gap-1 ${
             activeTab === 'tracking'
               ? 'border-black bg-orange-600 text-white shadow-brutalist'
               : 'border-black bg-white text-black'
@@ -469,10 +484,11 @@ export default function HuntPage() {
           title="Tracking"
         >
           <Compass className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+          <span className="text-[10px] uppercase tracking-widest font-bold">Track</span>
         </button>
         <button
           onClick={() => setActiveTab('public')}
-          className={`p-2 sm:p-3 border-2 transition-all ${
+          className={`min-w-[84px] p-2 border-2 transition-all flex flex-col items-center gap-1 ${
             activeTab === 'public'
               ? 'border-black bg-orange-600 text-white shadow-brutalist'
               : 'border-black bg-white text-black'
@@ -480,10 +496,11 @@ export default function HuntPage() {
           title="Public Hunts"
         >
           <Globe className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+          <span className="text-[10px] uppercase tracking-widest font-bold">Public</span>
         </button>
         <button
           onClick={() => setActiveTab('myhunts')}
-          className={`p-2 sm:p-3 border-2 transition-all ${
+          className={`min-w-[84px] p-2 border-2 transition-all flex flex-col items-center gap-1 ${
             activeTab === 'myhunts'
               ? 'border-black bg-orange-600 text-white shadow-brutalist'
               : 'border-black bg-white text-black'
@@ -491,6 +508,7 @@ export default function HuntPage() {
           title="My Hunts"
         >
           <BookMarked className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+          <span className="text-[10px] uppercase tracking-widest font-bold">My Hunts</span>
         </button>
       </nav>
     </div>

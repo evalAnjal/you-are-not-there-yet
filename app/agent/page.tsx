@@ -5,12 +5,11 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Archive, Radio, Zap, Copy, Check, X, Compass } from 'lucide-react';
+import { MapPin, Archive, Radio, Zap, Copy, Check, X } from 'lucide-react';
 
 const LocationMapPicker = dynamic(() => import('./origin/LocationMapPicker'), { ssr: false });
-const CompassUI = dynamic(() => import('./compass/CompassUI'), { ssr: false });
 
-type ScreenTab = 'briefing' | 'origin' | 'archive' | 'compass';
+type ScreenTab = 'briefing' | 'origin' | 'archive';
 
 interface DeployedDrop {
   code: string;
@@ -217,7 +216,7 @@ function BriefingRoom({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="p-6 space-y-4"
+      className="w-full max-w-md mx-auto p-6 space-y-4"
     >
       <div className="card-field">
         <h2 className="text-sm uppercase tracking-widest font-bold">Your Deployments</h2>
@@ -500,7 +499,7 @@ function ArchiveLogbook({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="p-6 space-y-3 pb-28"
+      className="w-full max-w-md mx-auto p-6 space-y-3 pb-28"
     >
       <div className="card-field">
         <h2 className="text-sm uppercase tracking-widest font-bold">Field Logbook</h2>
@@ -628,7 +627,6 @@ export default function AgentTerminal() {
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },
     { id: 'origin', icon: MapPin, label: 'Origin' },
-    { id: 'compass', icon: Compass, label: 'Compass' },
     { id: 'archive', icon: Archive, label: 'Archive' },
   ] as const;
 
@@ -669,7 +667,6 @@ export default function AgentTerminal() {
         <AnimatePresence mode="wait">
           {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
           {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
-          {activeTab === 'compass' && <div className="w-full pt-6 px-4"><CompassUI key="compass" /></div>}
           {activeTab === 'archive' && <ArchiveLogbook key="archive" deployedDrops={deployedDrops} />}
         </AnimatePresence>
       </main>
