@@ -19,6 +19,11 @@ export async function POST(req: Request) {
       [id, name, email, hashed]
     );
 
+    if (!res || res.rowCount === 0) {
+      console.error('DB insert returned no rows for user register', { email });
+      return NextResponse.json({ error: 'Database did not return the created user' }, { status: 500 });
+    }
+
     const user = res.rows[0];
     return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
   } catch (err: any) {
