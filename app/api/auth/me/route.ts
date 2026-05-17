@@ -1,19 +1,8 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
 import jwt from 'jsonwebtoken';
+import { query } from '../../../../lib/db';
 
-const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
-
-async function readUsers() {
-  try {
-    const raw = await fs.readFile(USERS_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch (e) {
-    return [];
-  }
-}
 
 function getTokenFromHeader(req: Request) {
   const auth = req.headers.get('authorization') || '';
@@ -33,10 +22,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const users = await readUsers();
-    const user = users.find((u: any) => u.id === payload.sub);
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const res = await query('SELECT id, name, email FROM users WHERE id = $1', [payload.sub]);
+    if (res.rowCount === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    const user = res.rows[0];
     return NextResponse.json({ id: user.id, email: user.email, name: user.name });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { query } from '../../../lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
@@ -10,22 +9,6 @@ function getTokenFromHeader(req: Request) {
   const auth = req.headers.get('authorization') || '';
   const m = auth.match(/^Bearer (.+)$/);
   return m ? m[1] : null;
-}
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'drops.json');
-
-async function readDrops() {
-  try {
-    const raw = await fs.readFile(DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch (e) {
-    return [];
-  }
-}
-
-async function writeDrops(drops: any[]) {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(drops, null, 2), 'utf-8');
 }
 
 export async function POST(req: Request) {
@@ -45,22 +28,13 @@ export async function POST(req: Request) {
       }
     }
 
-    const drops = await readDrops();
-    const newDrop = {
-      id: randomUUID(),
-      code: code ?? null,
-      lat: typeof lat === 'number' ? lat : Number(lat ?? null),
-      lng: typeof lng === 'number' ? lng : Number(lng ?? null),
-      radius: typeof radius === 'number' ? radius : Number(radius ?? null),
-      message: message ?? null,
-      created_by,
-      created_at: new Date().toISOString(),
-    };
+    const id = randomUUID();
+    const res = await query(
+      'INSERT INTO drops(id, code, lat, lng, radius, message, created_by, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()) RETURNING *',
+      [id, code ?? null, lat ? Number(lat) : null, lng ? Number(lng) : null, radius ?? null, message ?? null, created_by]
+    );
 
-    drops.push(newDrop);
-    await writeDrops(drops);
-
-    return NextResponse.json(newDrop, { status: 201 });
+    return NextResponse.json(res.rows[0], { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }
@@ -68,9 +42,8 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const drops = await readDrops();
-    drops.sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''));
-    return NextResponse.json(drops);
+    const res = await query('SELECT * FROM drops ORDER BY created_at DESC');
+    return NextResponse.json(res.rows || []);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }
