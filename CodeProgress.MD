@@ -1,8 +1,8 @@
 # Code Progress
 
-## DONE
-- [x] Supabase package installed (`@supabase/supabase-js`)
-- [x] Supabase server helper created (`lib/supabaseServer.ts`)
+-## DONE
+- [x] Removed Supabase integration and helper
+	(backend now uses a simple filesystem-backed stub at `app/api/drops/route.ts`)
 - [x] Backend route `POST /api/drops` created
 - [x] Backend route `GET /api/drops` created
 - [x] Origin deploy flow updated to call backend (`/api/drops`)
@@ -10,11 +10,12 @@
 - [x] Mobile code display updated to grouped format (`XXX-XXX`)
 - [x] Current location option added on origin page
 
-## TODO
-- [ ] Add `.env.local` values: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- [ ] Create Supabase table `drops`
-- [ ] Wire briefing page to fetch real deployments from `GET /api/drops`
-- [ ] Wire archive page to fetch real deployments from `GET /api/drops`
+-## TODO
+- [ ] Wire briefing page to fetch real deployments from `GET /api/drops` (replace stub)
+- [ ] Wire archive page to fetch real deployments from `GET /api/drops` (replace stub)
+- [ ] Add backend input validation (code/lat/lng/radius/message)
+- [ ] Add user-friendly API error messages on UI
+- [ ] End-to-end test: deploy -> save -> list in briefing/archive
 - [ ] Add backend input validation (code/lat/lng/radius/message)
 - [ ] Add user-friendly API error messages on UI
 - [ ] End-to-end test: deploy -> save in Supabase -> list in briefing/archive
@@ -46,13 +47,13 @@
 - `handleDeploy` (`app/agent/origin/page.tsx`) - POST deployment to backend
 
 ### Backend: API Routes
-- `POST` (`app/api/drops/route.ts`) - save new drop to Supabase
-- `GET` (`app/api/drops/route.ts`) - read drops from Supabase
+- `POST` (`app/api/drops/route.ts`) - save new drop (filesystem-backed stub)
+- `GET` (`app/api/drops/route.ts`) - read drops (filesystem-backed stub)
 
 ## Quick Backend Milestone Tracking
 - [x] M1: Backend scaffolding done (client + routes)
-- [ ] M2: Supabase environment configured
-- [ ] M3: Data model created in Supabase
+- [ ] M2: Replace filesystem stub with real DB (Postgres/Neon)
+- [ ] M3: Data model created in chosen DB
 - [ ] M4: Frontend listing connected to backend
 - [ ] M5: Validation + error handling complete
 - [ ] M6: End-to-end verified
