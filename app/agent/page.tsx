@@ -568,6 +568,7 @@ export default function AgentTerminal() {
   const [selectedDrop, setSelectedDrop] = useState<DeployedDrop | null>(null);
   const router = useRouter();
 
+  // Check auth on mount
   useEffect(() => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -576,6 +577,52 @@ export default function AgentTerminal() {
       router.replace('/login');
     }
   }, [router]);
+
+  // Fetch drops from backend on mount
+  useEffect(() => {
+    const fetchDrops = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (!token) return;
+        
+        const res = await fetch('/api/drops', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (!res.ok) {
+          console.error('Failed to fetch drops:', res.status);
+          return;
+        }
+        
+        const drops = await res.json();
+        console.info('[AGENT] Fetched drops from backend:', drops.length);
+        
+        // Convert DB drops to DeployedDrop format
+        const converted: DeployedDrop[] = drops.map((drop: any) => {
+          const createdAt = drop.created_at ? new Date(drop.created_at) : new Date();
+          const timestamp = createdAt.toISOString().split('T')[0] + ' ' + createdAt.toTimeString().split(' ')[0];
+          return {
+            code: drop.code || 'UNKNOWN',
+            timestamp,
+            lat: String(drop.lat || '0'),
+            lng: String(drop.lng || '0'),
+            radius: String(drop.radius || '10m'),
+            message: drop.message || '',
+          };
+        }).reverse(); // Show newest first
+        
+        setDeployedDrops(converted);
+      } catch (e) {
+        console.error('Error fetching drops:', e);
+      }
+    };
+    
+    fetchDrops();
+  }, []);
 
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },

@@ -14,7 +14,7 @@ function getTokenFromHeader(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { code, lat, lng, radius, message } = body;
+    const { code, lat, lng, radius, message, status } = body;
 
     // require authentication for creating drops
     const token = getTokenFromHeader(req);
@@ -37,23 +37,25 @@ export async function POST(req: Request) {
     }
 
     const id = randomUUID();
-    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, created_by];
-    console.info('Inserting drop', { id, created_by, lat: latNum, lng: lngNum, radius, message });
+    const dropStatus = status ?? 'active'; // Default to active
+    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, dropStatus, created_by];
+    console.info('[DROP_API] Inserting drop', { id, created_by, lat: latNum, lng: lngNum, radius, message, status: dropStatus });
     try {
       const res = await query(
-        'INSERT INTO drops(id, code, lat, lng, radius, message, created_by, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()) RETURNING *',
+        'INSERT INTO drops(id, code, lat, lng, radius, message, status, created_by, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now()) RETURNING *',
         params
       );
 
-      console.info('DB insert result', { rowCount: res?.rowCount });
+      console.info('[DROP_API] DB insert result', { rowCount: res?.rowCount, rows: res?.rows?.length });
       if (!res || res.rowCount === 0) {
-        console.error('DB insert returned no rows for drops insert', { id, created_by });
+        console.error('[DROP_API] DB insert returned no rows for drops insert', { id, created_by });
         return NextResponse.json({ error: 'Database did not return the created drop' }, { status: 500 });
       }
 
+      console.info('[DROP_API] Drop created successfully', { id });
       return NextResponse.json(res.rows[0], { status: 201 });
     } catch (dbErr: any) {
-      console.error('DB error inserting drop', { err: dbErr?.message || String(dbErr), stack: dbErr?.stack, params });
+      console.error('[DROP_API] DB error inserting drop', { err: dbErr?.message || String(dbErr), code: dbErr?.code, stack: dbErr?.stack, params });
       return NextResponse.json({ error: dbErr?.message || String(dbErr) }, { status: 500 });
     }
   } catch (err: any) {

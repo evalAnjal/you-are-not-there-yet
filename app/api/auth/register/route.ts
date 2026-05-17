@@ -14,17 +14,19 @@ export async function POST(req: Request) {
 
     const hashed = await bcrypt.hash(password, 10);
     const id = randomUUID();
+    console.info('[REGISTER] Creating user', { email, id });
     const res = await query(
       'INSERT INTO users(id, name, email, password, created_at) VALUES($1,$2,$3,$4,now()) RETURNING id, name, email',
       [id, name, email, hashed]
     );
 
     if (!res || res.rowCount === 0) {
-      console.error('DB insert returned no rows for user register', { email });
+      console.error('[REGISTER] DB insert returned no rows for user register', { email });
       return NextResponse.json({ error: 'Database did not return the created user' }, { status: 500 });
     }
 
     const user = res.rows[0];
+    console.info('[REGISTER] User created successfully', { id: user.id, email });
     return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
