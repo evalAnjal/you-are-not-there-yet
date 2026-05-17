@@ -253,8 +253,10 @@ function BriefingRoom({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
 // ============================================================================
 function OriginPoint({
   onCodeGenerated,
+  token,
 }: {
   onCodeGenerated: (drop: DeployedDrop) => void;
+  token?: string | null;
 }) {
   const [payloadType, setPayloadType] = useState<'text' | 'link'>('text');
   const [radiusIndex, setRadiusIndex] = useState(1);
@@ -296,16 +298,61 @@ function OriginPoint({
     const finalLat = lat || '40.712800';
     const finalLng = lng || '-74.006000';
 
-    const drop: DeployedDrop = {
+    const payload = {
       code: generateCode(),
-      timestamp,
       lat: finalLat,
       lng: finalLng,
       radius: radiusOptions[radiusIndex],
       message,
     };
 
-    onCodeGenerated(drop);
+    // Try to POST to API; if not available, fallback to local behavior
+    (async () => {
+      try {
+        const res = await fetch('/api/drops', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          const drop: DeployedDrop = {
+            code: created.code || payload.code,
+            timestamp,
+            lat: String(created.lat ?? payload.lat),
+            lng: String(created.lng ?? payload.lng),
+            radius: String(created.radius ?? payload.radius),
+            message: created.message ?? payload.message,
+          };
+          onCodeGenerated(drop);
+        } else {
+          // fallback local
+          const drop: DeployedDrop = {
+            code: payload.code,
+            timestamp,
+            lat: payload.lat,
+            lng: payload.lng,
+            radius: payload.radius,
+            message: payload.message,
+          };
+          onCodeGenerated(drop);
+        }
+      } catch (e) {
+        const drop: DeployedDrop = {
+          code: payload.code,
+          timestamp,
+          lat: payload.lat,
+          lng: payload.lng,
+          radius: payload.radius,
+          message: payload.message,
+        };
+        onCodeGenerated(drop);
+      }
+    })();
+
     setMessage('');
   };
 
@@ -518,6 +565,61 @@ export default function AgentTerminal() {
   const [showBoot, setShowBoot] = useState(true);
   const [deployedDrops, setDeployedDrops] = useState<DeployedDrop[]>([]);
   const [selectedDrop, setSelectedDrop] = useState<DeployedDrop | null>(null);
+  const [token, setToken] = useState<string | null>(() => typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Small login/register component
+  function LoginBox() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    const doAuth = async (mode: 'login' | 'register') => {
+      setBusy(true);
+      try {
+        const res = await fetch(`/api/auth/${mode}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const j = await res.json();
+        if (!res.ok) {
+          alert(j.error || 'Auth error');
+          setBusy(false);
+          return;
+        }
+        if (mode === 'login') {
+          localStorage.setItem('token', j.token);
+          setToken(j.token);
+          setUserEmail(j.email);
+        } else {
+          alert('Registered. Now log in.');
+        }
+      } catch (e: any) {
+        alert(String(e));
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    if (token) {
+      return (
+        <div className="text-xs">
+          <span className="mr-2">{userEmail ?? 'Logged in'}</span>
+          <button className="btn-brutalist px-2 py-1 text-xs" onClick={() => { localStorage.removeItem('token'); setToken(null); setUserEmail(null); }}>Logout</button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex gap-2 items-center">
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" className="input-brutalist text-xs" />
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" className="input-brutalist text-xs" />
+        <button className="btn-brutalist px-3 py-1 text-xs" disabled={busy} onClick={() => doAuth('login')}>Login</button>
+        <button className="btn-brutalist px-3 py-1 text-xs" disabled={busy} onClick={() => doAuth('register')}>Register</button>
+      </div>
+    );
+  }
 
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },
@@ -561,13 +663,16 @@ export default function AgentTerminal() {
       <main className="flex-1 relative overflow-y-auto pb-24 sm:pb-20 bg-white">
         <AnimatePresence mode="wait">
           {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
-          {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
+          {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} token={token} />}
           {activeTab === 'archive' && <ArchiveLogbook key="archive" deployedDrops={deployedDrops} />}
         </AnimatePresence>
       </main>
 
       {/* Bottom Navigation - Icons Only */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 sm:px-4 py-2 sm:py-3 flex justify-around gap-1 sm:gap-2">
+        <div className="absolute left-4 top-4">
+          <LoginBox />
+        </div>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
