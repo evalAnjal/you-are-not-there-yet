@@ -25,6 +25,7 @@ interface HuntState {
 }
 
 type HuntTab = 'tracking' | 'public' | 'myhunts';
+const HUNT_STATE_KEY = 'hunt-active-state-v1';
 
 export default function HuntPage() {
   const [hunt, setHunt] = useState<HuntState>({
@@ -52,13 +53,54 @@ export default function HuntPage() {
 
   const unlockThreshold = 20; // 20 meters
 
-  // Initialize with target location from query param or default
+  // Initialize from persisted hunt state, else from query param/default.
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HUNT_STATE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved?.dropFound && typeof saved?.code === 'string') {
+          const parsedLat = saved.targetLat != null ? parseFloat(saved.targetLat) : undefined;
+          const parsedLng = saved.targetLng != null ? parseFloat(saved.targetLng) : undefined;
+          setHunt((prev) => ({
+            ...prev,
+            code: saved.code,
+            targetLat: typeof parsedLat === 'number' && !isNaN(parsedLat) ? parsedLat : prev.targetLat,
+            targetLng: typeof parsedLng === 'number' && !isNaN(parsedLng) ? parsedLng : prev.targetLng,
+            dropFound: true,
+            dropMessage: typeof saved.dropMessage === 'string' ? saved.dropMessage : '',
+            discoveryRecorded: !!saved.discoveryRecorded,
+          }));
+          return;
+        }
+      }
+    } catch {
+      // Ignore invalid persisted payload
+    }
+
     const params = new URLSearchParams(window.location.search);
     const lat = params.get('lat') ? parseFloat(params.get('lat')!) : 26.664488;
     const lng = params.get('lng') ? parseFloat(params.get('lng')!) : 87.274876;
     setHunt((prev) => ({ ...prev, targetLat: lat, targetLng: lng }));
   }, []);
+
+  // Persist active hunt so refresh does not reset tracking progress.
+  useEffect(() => {
+    if (!hunt.dropFound) {
+      localStorage.removeItem(HUNT_STATE_KEY);
+      return;
+    }
+
+    const payload = {
+      code: hunt.code,
+      targetLat: hunt.targetLat,
+      targetLng: hunt.targetLng,
+      dropFound: hunt.dropFound,
+      dropMessage: hunt.dropMessage,
+      discoveryRecorded: hunt.discoveryRecorded,
+    };
+    localStorage.setItem(HUNT_STATE_KEY, JSON.stringify(payload));
+  }, [hunt.code, hunt.targetLat, hunt.targetLng, hunt.dropFound, hunt.dropMessage, hunt.discoveryRecorded]);
 
   // Fetch user's discoveries on mount
   useEffect(() => {
@@ -73,7 +115,15 @@ export default function HuntPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setDiscoveries(data);
+          const normalized = Array.isArray(data)
+            ? data.map((d: any) => ({
+                ...d,
+                lat: d.lat != null ? parseFloat(d.lat) : d.lat,
+                lng: d.lng != null ? parseFloat(d.lng) : d.lng,
+                distance_at_find: d.distance_at_find != null ? Number(d.distance_at_find) : d.distance_at_find,
+              }))
+            : [];
+          setDiscoveries(normalized);
         }
       } catch (err) {
         console.error('Error fetching discoveries:', err);
@@ -101,10 +151,12 @@ export default function HuntPage() {
 
       const data = await res.json();
       if (res.ok) {
+        const tlat = data?.target?.lat != null ? parseFloat(data.target.lat) : null;
+        const tlng = data?.target?.lng != null ? parseFloat(data.target.lng) : null;
         setHunt((prev) => ({
           ...prev,
-          targetLat: data.target.lat,
-          targetLng: data.target.lng,
+          targetLat: typeof tlat === 'number' && !isNaN(tlat) ? tlat : prev.targetLat,
+          targetLng: typeof tlng === 'number' && !isNaN(tlng) ? tlng : prev.targetLng,
           dropFound: true,
           dropMessage: '',
           discoveryRecorded: false,
@@ -470,16 +522,6 @@ export default function HuntPage() {
                 </p>
               </div>
 
-              {isMinimalTracking && (
-                <div className="w-full max-w-md grid grid-cols-3 gap-2 text-[10px] uppercase tracking-widest">
-                  <div className="border-2 border-black py-2">GPS OK</div>
-                  <div className="border-2 border-black py-2">COMPASS OK</div>
-                  <div className={`border-2 py-2 ${hunt.isMoving ? 'border-orange-600 text-orange-600' : 'border-black'}`}>
-                    {hunt.isMoving ? 'MOVING' : 'STATIC'}
-                  </div>
-                </div>
-              )}
-
               {/* Compass Circle with Real Bearing */}
               <div className={`relative w-56 h-56 sm:w-72 sm:h-72 border-4 ${getBorderColor()} ${getBgColor()} flex items-center justify-center`}>
                 {/* Cardinal Points */}
@@ -508,6 +550,16 @@ export default function HuntPage() {
                 {/* Center Crosshair */}
                 <div className="w-4 h-4 bg-black border-2 border-white z-10"></div>
               </div>
+
+              {isMinimalTracking && (
+                <div className="w-full max-w-md grid grid-cols-3 gap-2 text-[10px] uppercase tracking-widest">
+                  <div className="border-2 border-black py-2">GPS OK</div>
+                  <div className="border-2 border-black py-2">COMPASS OK</div>
+                  <div className={`border-2 py-2 ${hunt.isMoving ? 'border-orange-600 text-orange-600' : 'border-black'}`}>
+                    {hunt.isMoving ? 'MOVING' : 'STATIC'}
+                  </div>
+                </div>
+              )}
 
               {/* Unlock Message */}
               {hunt.isUnlocked && (
@@ -593,7 +645,7 @@ export default function HuntPage() {
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 sm:px-4 py-2 sm:py-3 flex justify-around gap-1 sm:gap-2">
         <button
           onClick={() => setActiveTab('tracking')}
-          className={`min-w-[84px] p-2 border-2 transition-all flex flex-col items-center gap-1 ${
+          className={`p-2 sm:p-3 border-2 transition-all ${
             activeTab === 'tracking'
               ? 'border-black bg-orange-600 text-white shadow-brutalist'
               : 'border-black bg-white text-black'
@@ -601,11 +653,10 @@ export default function HuntPage() {
           title="Tracking"
         >
           <Compass className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-          <span className="text-[10px] uppercase tracking-widest font-bold">Track</span>
         </button>
         <button
           onClick={() => setActiveTab('public')}
-          className={`min-w-[84px] p-2 border-2 transition-all flex flex-col items-center gap-1 ${
+          className={`p-2 sm:p-3 border-2 transition-all ${
             activeTab === 'public'
               ? 'border-black bg-orange-600 text-white shadow-brutalist'
               : 'border-black bg-white text-black'
@@ -613,11 +664,10 @@ export default function HuntPage() {
           title="Public Hunts"
         >
           <Globe className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-          <span className="text-[10px] uppercase tracking-widest font-bold">Public</span>
         </button>
         <button
           onClick={() => setActiveTab('myhunts')}
-          className={`min-w-[84px] p-2 border-2 transition-all flex flex-col items-center gap-1 ${
+          className={`p-2 sm:p-3 border-2 transition-all ${
             activeTab === 'myhunts'
               ? 'border-black bg-orange-600 text-white shadow-brutalist'
               : 'border-black bg-white text-black'
@@ -625,7 +675,6 @@ export default function HuntPage() {
           title="My Hunts"
         >
           <BookMarked className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-          <span className="text-[10px] uppercase tracking-widest font-bold">My Hunts</span>
         </button>
       </nav>
     </div>
