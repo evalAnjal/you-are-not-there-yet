@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Unlock, Activity, Smartphone, Compass, Globe, BookMarked } from 'lucide-react';
 
 interface HuntState {
   distance: number | null;
   bearing: number | null;
+  targetBearing: number | null;
   isUnlocked: boolean;
   targetLat: number | null;
   targetLng: number | null;
   userLat: number | null;
   userLng: number | null;
+  locationAccuracy: number | null;
+  speed: number | null;
   locationPermission: 'granted' | 'denied' | 'pending';
   orientationPermission: 'granted' | 'denied' | 'pending';
   hasDeviceOrientation: boolean;
@@ -28,14 +31,19 @@ type HuntTab = 'tracking' | 'public' | 'myhunts';
 const HUNT_STATE_KEY = 'hunt-active-state-v1';
 
 export default function HuntPage() {
+  const watchIdRef = useRef<number | null>(null);
+
   const [hunt, setHunt] = useState<HuntState>({
     distance: null,
     bearing: null,
+    targetBearing: null,
     isUnlocked: false,
     targetLat: null,
     targetLng: null,
     userLat: null,
     userLng: null,
+    locationAccuracy: null,
+    speed: null,
     locationPermission: 'pending',
     orientationPermission: 'pending',
     hasDeviceOrientation: false,
@@ -190,13 +198,20 @@ export default function HuntPage() {
         return;
       }
 
-      navigator.geolocation.watchPosition(
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
+          const { latitude, longitude, accuracy, speed } = position.coords;
           setHunt((prev) => ({
             ...prev,
             userLat: latitude,
             userLng: longitude,
+            locationAccuracy: Number.isFinite(accuracy) ? accuracy : prev.locationAccuracy,
+            speed: Number.isFinite(speed) ? speed : prev.speed,
             locationPermission: 'granted',
           }));
         },
@@ -208,7 +223,7 @@ export default function HuntPage() {
           }));
           console.error('Geolocation error:', error);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } catch (e) {
       setHunt((prev) => ({
@@ -291,25 +306,38 @@ export default function HuntPage() {
     await requestMotionPermission();
   };
 
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      watchIdRef.current = null;
+    };
+  }, []);
+
   // Handle device orientation (compass/bearing)
   const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
-    let alpha = event.alpha || 0; // Z axis (0-360)
-    setHunt((prev) => ({ ...prev, bearing: Math.round(alpha) }));
+    const compassHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+    const alpha = event.alpha ?? 0;
+    const heading = typeof compassHeading === 'number' ? compassHeading : (alpha + 360) % 360;
+    setHunt((prev) => ({ ...prev, bearing: Math.round(heading) }));
   };
 
   // Handle device motion (accelerometer)
   const handleDeviceMotion = (event: DeviceMotionEvent) => {
-    const acc = event.acceleration;
+    const acc = event.accelerationIncludingGravity ?? event.acceleration;
     const accelMagnitude = Math.sqrt(
       (acc?.x || 0) ** 2 + (acc?.y || 0) ** 2 + (acc?.z || 0) ** 2
     );
-    const isMoving = accelMagnitude > 3; // Threshold for movement
-    setHunt((prev) => ({ ...prev, isMoving }));
+    setHunt((prev) => ({
+      ...prev,
+      isMoving: accelMagnitude > 12 || (prev.speed ?? 0) > 0.5,
+    }));
   };
 
   // Calculate distance using Haversine formula
   useEffect(() => {
-    if (hunt.userLat && hunt.userLng && hunt.targetLat && hunt.targetLng) {
+    if (hunt.userLat != null && hunt.userLng != null && hunt.targetLat != null && hunt.targetLng != null) {
       const R = 6371000; // Earth's radius in meters
       const dLat = ((hunt.targetLat - hunt.userLat) * Math.PI) / 180;
       const dLon = ((hunt.targetLng - hunt.userLng) * Math.PI) / 180;
@@ -336,6 +364,7 @@ export default function HuntPage() {
       setHunt((prev) => ({
         ...prev,
         distance,
+        targetBearing: Math.round(normalizedBearing),
         isUnlocked: distance <= unlockThreshold,
       }));
     }
@@ -414,6 +443,8 @@ export default function HuntPage() {
   const getBorderColor = () => (hunt.distance && hunt.distance <= unlockThreshold ? 'border-orange-600' : 'border-black');
   const isMinimalTracking =
     hunt.locationPermission === 'granted' && hunt.orientationPermission === 'granted';
+  const compassRotate = hunt.targetBearing != null && hunt.bearing != null ? (hunt.targetBearing - hunt.bearing + 360) % 360 : hunt.targetBearing ?? 0;
+  const locationReadout = hunt.locationAccuracy != null ? `±${Math.round(hunt.locationAccuracy)}m` : 'Acquiring position';
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-mono flex flex-col items-center justify-between p-3 sm:p-4">
@@ -495,7 +526,7 @@ export default function HuntPage() {
                         Request GPS Access
                       </button>
                     )}
-                    {hunt.userLat && hunt.userLng && (
+                    {hunt.userLat != null && hunt.userLng != null && (
                       <div className="text-xs font-mono text-zinc-600">
                         {hunt.userLat.toFixed(5)}, {hunt.userLng.toFixed(5)}
                       </div>
@@ -564,7 +595,7 @@ export default function HuntPage() {
 
                 {/* Rotating Bearing Indicator (from device orientation) */}
                 <motion.div
-                  animate={{ rotate: hunt.bearing ?? 0 }}
+                  animate={{ rotate: compassRotate }}
                   transition={{ duration: 0.1, type: 'tween' }}
                   className="absolute w-full h-full flex items-start justify-center pt-8"
                 >
@@ -614,13 +645,13 @@ export default function HuntPage() {
                 <div className="card-field text-xs space-y-1 bg-zinc-50 border-2 border-zinc-300">
                   <div className="font-bold uppercase">Sensor Status</div>
                   <div className="font-mono text-zinc-600">
-                    {hunt.locationPermission === 'granted' && hunt.userLat ? `Loc: ${hunt.distance}m away` : 'Waiting for location...'}
+                    {hunt.locationPermission === 'granted' && hunt.userLat != null ? `Loc: ${locationReadout}` : 'Waiting for location...'}
                   </div>
                   <div className="font-mono text-zinc-600">
-                    {hunt.orientationPermission === 'granted' && hunt.bearing ? `Bearing: ${hunt.bearing}°` : 'Waiting for compass...'}
+                    {hunt.orientationPermission === 'granted' && hunt.bearing != null ? `Bearing: ${hunt.bearing}°` : 'Waiting for compass...'}
                   </div>
                   <div className="font-mono text-zinc-600">
-                    {hunt.hasAccelerometer ? `Motion: ${hunt.isMoving ? 'ACTIVE' : 'IDLE'}` : 'Accelerometer inactive'}
+                    {hunt.hasAccelerometer ? `Motion: ${hunt.isMoving ? 'MOVING' : 'STATIC'}` : 'Accelerometer inactive'}
                   </div>
                 </div>
               </div>
