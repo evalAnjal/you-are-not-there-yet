@@ -1,12 +1,17 @@
 import { Pool } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || '';
 let pool: Pool | null = null;
 let initPromise: Promise<void> | null = null;
 
-if (!connectionString) {
-  console.warn('[DB] DATABASE_URL not set — Postgres client not initialized.');
-} else {
+function getPool() {
+  if (pool) return pool;
+
+  const connectionString = process.env.DATABASE_URL || '';
+  if (!connectionString) {
+    console.warn('[DB] DATABASE_URL not set — Postgres client not initialized.');
+    return null;
+  }
+
   // Neon and managed Postgres require SSL. Set DATABASE_SSL=false to disable.
   const useSsl = process.env.DATABASE_SSL !== 'false';
   pool = new Pool({ 
@@ -23,14 +28,14 @@ if (!connectionString) {
   });
   
   console.info('[DB] Pool created (connections will be lazily established on first query)');
-  
-  // Start initialization immediately and track with a promise
-  initPromise = init();
+
+  return pool;
 }
 
 // Initialize minimal schema (create if not exists, add missing columns)
 async function init() {
-  if (!pool) {
+  const currentPool = getPool();
+  if (!currentPool) {
     console.warn('[DB] Pool not initialized, skipping schema init');
     return;
   }
@@ -38,7 +43,7 @@ async function init() {
     console.info('[DB] Initializing schema...');
     
     // Create users table if it doesn't exist
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id uuid PRIMARY KEY,
         name text NOT NULL,
@@ -49,7 +54,7 @@ async function init() {
     `);
     
     // Create drops table if it doesn't exist (without FK constraint for dev simplicity)
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS drops (
         id uuid PRIMARY KEY,
         code text UNIQUE,
@@ -64,7 +69,7 @@ async function init() {
     `);
     
     // Create discoveries table to track when users find drops
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS discoveries (
         id uuid PRIMARY KEY,
         drop_id uuid,
@@ -75,17 +80,17 @@ async function init() {
     `);
     
     // Add missing radius column if it doesn't exist (migration for old schema)
-    await pool.query(`
+    await currentPool.query(`
       ALTER TABLE drops ADD COLUMN IF NOT EXISTS radius text;
     `);
     
     // Add status column if it doesn't exist (migration for new schema)
-    await pool.query(`
+    await currentPool.query(`
       ALTER TABLE drops ADD COLUMN IF NOT EXISTS status text DEFAULT 'active';
     `);
     
     // Drop foreign key constraint if it exists (for dev, we don't enforce FK)
-    await pool.query(`
+    await currentPool.query(`
       ALTER TABLE drops DROP CONSTRAINT IF EXISTS drops_created_by_fkey CASCADE;
     `).catch(() => {
       // Ignore if constraint doesn't exist
@@ -98,19 +103,26 @@ async function init() {
   }
 }
 
+async function ensureInitialized() {
+  if (!initPromise) {
+    initPromise = init();
+  }
+
+  return initPromise;
+}
+
 export async function query(text: string, params?: any[]) {
-  if (!pool) {
+  const currentPool = getPool();
+  if (!currentPool) {
     console.error('[DB.query] Pool is null - DATABASE_URL may not be configured');
     throw new Error('DATABASE_URL not configured. Set DATABASE_URL in your environment.');
   }
   
   // Wait for schema initialization to complete before running any query
-  if (initPromise) {
-    await initPromise;
-  }
+  await ensureInitialized();
   
   try {
-    return await pool.query(text, params);
+    return await currentPool.query(text, params);
   } catch (e: any) {
     console.error('[DB.query] Query failed:', { err: e?.message, code: e?.code });
     throw e;
