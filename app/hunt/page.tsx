@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Unlock, Activity, Smartphone, Compass, Globe, BookMarked } from 'lucide-react';
+import { useParams } from 'next/navigation';
 
 interface HuntState {
   distance: number | null;
@@ -31,7 +32,9 @@ type HuntTab = 'tracking' | 'public' | 'myhunts';
 const HUNT_STATE_KEY = 'hunt-active-state-v1';
 
 export default function HuntPage() {
+  const params = useParams<{ payload?: string }>();
   const watchIdRef = useRef<number | null>(null);
+  const autoSearchRef = useRef<string | null>(null);
 
   const [hunt, setHunt] = useState<HuntState>({
     distance: null,
@@ -60,6 +63,8 @@ export default function HuntPage() {
   const [discoveries, setDiscoveries] = useState<any[]>([]);
 
   const unlockThreshold = 20; // 20 meters
+  const payloadParam = typeof params?.payload === 'string' ? params.payload.trim() : '';
+  const payloadCode = payloadParam ? payloadParam.toUpperCase() : '';
 
   // Initialize from persisted hunt state, else from query param/default.
   useEffect(() => {
@@ -91,6 +96,17 @@ export default function HuntPage() {
     const lng = params.get('lng') ? parseFloat(params.get('lng')!) : 87.274876;
     setHunt((prev) => ({ ...prev, targetLat: lat, targetLng: lng }));
   }, []);
+
+  useEffect(() => {
+    if (!payloadCode) return;
+
+    setHunt((prev) => (prev.code === payloadCode ? prev : { ...prev, code: payloadCode }));
+
+    if (autoSearchRef.current === payloadCode) return;
+    autoSearchRef.current = payloadCode;
+
+    void searchDropByCode(payloadCode);
+  }, [payloadCode]);
 
   // Persist active hunt so refresh does not reset tracking progress.
   useEffect(() => {
@@ -143,8 +159,9 @@ export default function HuntPage() {
   }, []);
 
   // Search for drop by code
-  const searchDropByCode = async () => {
-    if (!hunt.code.trim()) return;
+  const searchDropByCode = async (codeOverride?: string) => {
+    const codeToSearch = (codeOverride ?? hunt.code).trim();
+    if (!codeToSearch) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -155,7 +172,7 @@ export default function HuntPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          code: hunt.code.trim(),
+          code: codeToSearch,
         }),
       });
 
@@ -490,7 +507,7 @@ export default function HuntPage() {
                     maxLength={6}
                   />
                   <button
-                    onClick={searchDropByCode}
+                    onClick={() => searchDropByCode()}
                     disabled={!hunt.code.trim() || hunt.locationPermission !== 'granted'}
                     className="border-2 border-black px-3 py-2 bg-orange-600 text-white text-xs uppercase tracking-widest font-bold hover:bg-orange-700 disabled:bg-zinc-400 active:translate-x-[1px] active:translate-y-[1px]"
                   >
@@ -519,12 +536,9 @@ export default function HuntPage() {
                       </span>
                     </div>
                     {hunt.locationPermission !== 'granted' && (
-                      <button
-                        onClick={requestLocationPermission}
-                        className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
-                      >
-                        Request GPS Access
-                      </button>
+                      <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold">
+                        GPS access will be requested by Enable Hunt Sensors
+                      </div>
                     )}
                     {hunt.userLat != null && hunt.userLng != null && (
                       <div className="text-xs font-mono text-zinc-600">
@@ -541,12 +555,9 @@ export default function HuntPage() {
                       </span>
                     </div>
                     {hunt.orientationPermission !== 'granted' && (
-                      <button
-                        onClick={requestOrientationPermission}
-                        className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
-                      >
-                        Request Device Orientation
-                      </button>
+                      <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold">
+                        Compass access will be requested by Enable Hunt Sensors
+                      </div>
                     )}
                   </div>
 
@@ -558,12 +569,9 @@ export default function HuntPage() {
                       </span>
                     </div>
                     {!hunt.hasAccelerometer && (
-                      <button
-                        onClick={requestMotionPermission}
-                        className="w-full border-2 border-black py-2 bg-white hover:bg-zinc-100 text-xs uppercase tracking-widest font-bold active:translate-x-[1px] active:translate-y-[1px]"
-                      >
-                        Request Motion Access
-                      </button>
+                      <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold">
+                        Motion access will be requested by Enable Hunt Sensors
+                      </div>
                     )}
                   </div>
                 </>
