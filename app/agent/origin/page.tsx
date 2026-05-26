@@ -21,6 +21,8 @@ export default function OriginPage() {
   const [lng, setLng] = useState('87.274876');
   const [radiusIndex, setRadiusIndex] = useState(1);
   const [lastCode, setLastCode] = useState<string | null>(null);
+  const [streakEnabled, setStreakEnabled] = useState(false);
+  const [streakDays, setStreakDays] = useState<number>(3);
   const [locStatus, setLocStatus] = useState<string | null>(null);
   const [isMapOpen, setIsMapOpen] = useState(false);
 
@@ -58,7 +60,7 @@ export default function OriginPage() {
         const res = await fetch('/api/drops', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, lat: finalLat, lng: finalLng, radius: radiusOptions[radiusIndex], message }),
+          body: JSON.stringify({ code, lat: finalLat, lng: finalLng, radius: radiusOptions[radiusIndex], message, streak_required: streakEnabled ? streakDays : null }),
         });
 
         if (!res.ok) {
@@ -144,12 +146,48 @@ export default function OriginPage() {
         <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Enter your payload..." className="input-brutalist w-full h-24 resize-none" />
       </div>
 
+      <div className="card-field space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase tracking-widest font-bold">Streak Hunt</div>
+          <div className="flex items-center gap-2 text-xs">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={streakEnabled} onChange={(e) => setStreakEnabled(e.target.checked)} />
+              <span>Enable</span>
+            </label>
+          </div>
+        </div>
+        {streakEnabled && (
+          <div className="text-xs">
+            <div className="text-zinc-600 uppercase tracking-widest">Days required</div>
+            <input type="number" min={1} value={streakDays} onChange={(e) => setStreakDays(Number(e.target.value || 1))} className="input-brutalist w-28" />
+          </div>
+        )}
+      </div>
+
       <button onClick={handleDeploy} disabled={!message.trim()} className="btn-brutalist bg-orange-600 text-white w-full py-3 disabled:opacity-50">Deploy Payload</button>
 
       {lastCode && (
         <div className="card-field text-center">
           <div className="text-xs uppercase tracking-widest text-zinc-600">Unlock Code</div>
           <div className="text-3xl sm:text-5xl font-mono font-bold tracking-widest mt-2">{lastCode.slice(0,3)} - {lastCode.slice(3)}</div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(lastCode || '');
+              }}
+              className="btn-brutalist flex-1 py-2 text-xs"
+            >
+              Copy Code
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(googleMapsUrl);
+              }}
+              className="btn-brutalist flex-1 py-2 text-xs"
+            >
+              Copy Link
+            </button>
+          </div>
         </div>
       )}
 

@@ -14,7 +14,7 @@ function getTokenFromHeader(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { code, lat, lng, radius, message, status } = body;
+    const { code, lat, lng, radius, message, status, streak_required } = body;
 
     // require authentication for creating drops
     const token = getTokenFromHeader(req);
@@ -38,11 +38,12 @@ export async function POST(req: Request) {
 
     const id = randomUUID();
     const dropStatus = status ?? 'active'; // Default to active
-    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, dropStatus, created_by];
+    const streakRequired = streak_required != null ? Number(streak_required) : null;
+    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, dropStatus, created_by, streakRequired];
     console.info('[DROP_API] Inserting drop', { id, created_by, lat: latNum, lng: lngNum, radius, message, status: dropStatus });
     try {
       const res = await query(
-        'INSERT INTO drops(id, code, lat, lng, radius, message, status, created_by, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now()) RETURNING *',
+        'INSERT INTO drops(id, code, lat, lng, radius, message, status, created_by, streak_required, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now()) RETURNING *',
         params
       );
 
@@ -79,7 +80,16 @@ export async function GET(req: Request) {
     }
     const created_by: string = payload.sub;
 
-    const res = await query('SELECT * FROM drops WHERE created_by = $1 ORDER BY created_at DESC', [created_by]);
+    // Join user_streaks to include the requesting user's streak progress for each drop
+    const res = await query(
+      `SELECT d.*, us.current_streak
+       FROM drops d
+       LEFT JOIN user_streaks us ON us.drop_id = d.id AND us.user_id = $1
+       WHERE d.created_by = $1
+       ORDER BY d.created_at DESC`,
+      [created_by]
+    );
+
     return NextResponse.json(res.rows || []);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });

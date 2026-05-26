@@ -66,9 +66,22 @@ export default function LocationMapPicker({ lat, lng, onPick, onClose }: Locatio
               Click anywhere on the map to set latitude and longitude.
             </p>
           </div>
-          <button onClick={onClose} className="btn-brutalist px-3 py-1 text-xs">
-            Close
-          </button>
+          {(() => {
+            const selectDisabled = selectedLat === null || selectedLng === null;
+            return (
+              <button
+                onClick={() => {
+                  if (selectDisabled) return;
+                  onPick(selectedLat!.toFixed(6), selectedLng!.toFixed(6));
+                  onClose();
+                }}
+                disabled={selectDisabled}
+                className={`btn-brutalist px-3 py-1 text-xs ${selectDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Select
+              </button>
+            );
+          })()}
         </div>
 
         <div className="divider-thick" />

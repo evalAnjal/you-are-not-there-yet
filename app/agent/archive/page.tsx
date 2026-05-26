@@ -12,7 +12,8 @@ export default function ArchivePage() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/drops');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const res = await fetch('/api/drops', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           showToast(j.error || 'Failed to load archive', 'error');
@@ -43,6 +44,9 @@ export default function ArchivePage() {
               <div>
                 <div className="text-xs font-bold uppercase tracking-widest">{d.code || '—'}</div>
                 <div className="text-xs text-zinc-600 font-mono">{d.message || 'No message'}</div>
+                {d.streak_required ? (
+                  <div className="mt-1 text-xs font-bold">{(d.current_streak ?? 0)}/{d.streak_required} achieved</div>
+                ) : null}
               </div>
               <div className="text-xs text-zinc-500 text-right">
                 {d.lat != null && d.lng != null ? `${Number(d.lat).toFixed(4)}, ${Number(d.lng).toFixed(4)}` : 'No location'}

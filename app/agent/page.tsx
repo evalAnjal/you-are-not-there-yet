@@ -18,6 +18,8 @@ interface DeployedDrop {
   lng: string;
   radius: string;
   message: string;
+  currentStreak?: number;
+  streakRequired?: number | null;
 }
 
 // ============================================================================
@@ -97,6 +99,9 @@ function CodeConfirmation({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const googleMapsUrl = drop.lat && drop.lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${drop.lat},${drop.lng}`)}` : 'https://www.google.com/maps';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(drop.code);
@@ -150,6 +155,24 @@ function CodeConfirmation({
             ) : (
               <>
                 <Copy className="w-4 h-4" /> Copy Code
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(googleMapsUrl);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+            }}
+            className="btn-brutalist w-full py-2 bg-white border-2 border-black flex items-center justify-center gap-2 active:translate-x-[2px] active:translate-y-[2px]"
+          >
+            {linkCopied ? (
+              <>
+                <Check className="w-4 h-4" /> Link Copied
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4" /> Copy Link
               </>
             )}
           </button>
@@ -265,6 +288,8 @@ function OriginPoint({
   const [lng, setLng] = useState('87.274876');
   const [locStatus, setLocStatus] = useState<string | null>(null);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [streakEnabled, setStreakEnabled] = useState(false);
+  const [streakDays, setStreakDays] = useState<number>(3);
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
   const locationLabel = 'Itahari, Nepal';
 
@@ -304,6 +329,7 @@ function OriginPoint({
       lng: finalLng,
       radius: radiusOptions[radiusIndex],
       message,
+      streak_required: streakEnabled ? streakDays : null,
     };
 
     // Try to POST to API; if not available, fallback to local behavior
@@ -464,6 +490,24 @@ function OriginPoint({
         />
       </div>
 
+      <div className="card-field space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase tracking-widest font-bold">Streak Hunt</div>
+          <div className="flex items-center gap-2 text-xs">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={streakEnabled} onChange={(e) => setStreakEnabled(e.target.checked)} />
+              <span>Enable</span>
+            </label>
+          </div>
+        </div>
+        {streakEnabled && (
+          <div className="text-xs">
+            <div className="text-zinc-600 uppercase tracking-widest">Days required</div>
+            <input type="number" min={1} value={streakDays} onChange={(e) => setStreakDays(Number(e.target.value || 1))} className="input-brutalist w-28" />
+          </div>
+        )}
+      </div>
+
       {/* Deploy Button */}
       <button
         onClick={handleDeploy}
@@ -551,6 +595,12 @@ function ArchiveLogbook({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
             <div className="bg-zinc-50 p-3 border-2 border-zinc-300">
               <p className="text-xs font-mono">{drop.message}</p>
             </div>
+            {drop.streakRequired ? (
+              <div className="mt-2 text-xs">
+                <div className="text-zinc-600 uppercase tracking-widest">Streak</div>
+                <div className="font-bold">{(drop.currentStreak ?? 0)}/{drop.streakRequired} achieved</div>
+              </div>
+            ) : null}
           </div>
         ))
       )}
@@ -612,6 +662,8 @@ export default function AgentTerminal() {
             lng: String(drop.lng || '0'),
             radius: String(drop.radius || '10m'),
             message: drop.message || '',
+            currentStreak: drop.current_streak ?? drop.currentStreak ?? 0,
+            streakRequired: drop.streak_required ?? drop.streakRequired ?? null,
           };
         }).reverse(); // Show newest first
         
