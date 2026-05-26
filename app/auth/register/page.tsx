@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '../../components/ToastProvider';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const showToast = useToast();
 
   const doRegister = async () => {
     setBusy(true);
@@ -20,14 +22,14 @@ export default function RegisterPage() {
       });
       const j = await res.json();
       if (!res.ok) {
-        alert(j.error || 'Register failed');
+        showToast(j.error || 'Register failed', 'error');
         return;
       }
 
-      alert('Registered — please log in.');
+      showToast('Registered — please log in.', 'success');
       router.push('/auth/login');
     } catch (e: any) {
-      alert(String(e));
+      showToast(String(e), 'error');
     } finally {
       setBusy(false);
     }

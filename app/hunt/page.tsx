@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import { useToast } from '../components/ToastProvider';
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Unlock, Activity, Smartphone, Compass, Globe, BookMarked } from 'lucide-react';
@@ -35,6 +36,7 @@ export default function HuntPage() {
   const params = useParams<{ payload?: string }>();
   const watchIdRef = useRef<number | null>(null);
   const autoSearchRef = useRef<string | null>(null);
+  const showToast = useToast();
 
   const [hunt, setHunt] = useState<HuntState>({
     distance: null,
@@ -190,11 +192,11 @@ export default function HuntPage() {
           isUnlocked: false,
         }));
       } else {
-        alert(data.error || 'Drop not found');
+        showToast(data.error || 'Drop not found', 'error');
       }
     } catch (err) {
       console.error('Error searching for drop:', err);
-      alert('Error searching for drop');
+      showToast('Error searching for drop', 'error');
     }
   };
 

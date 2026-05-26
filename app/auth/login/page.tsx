@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '../../components/ToastProvider';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const showToast = useToast();
 
   const doLogin = async () => {
     setBusy(true);
@@ -19,14 +21,15 @@ export default function LoginPage() {
       });
       const j = await res.json();
       if (!res.ok) {
-        alert(j.error || 'Login failed');
+        showToast(j.error || 'Login failed', 'error');
         return;
       }
 
       localStorage.setItem('token', j.token);
+      showToast('Login successful', 'success');
       router.push('/agent');
     } catch (e: any) {
-      alert(String(e));
+      showToast(String(e), 'error');
     } finally {
       setBusy(false);
     }
