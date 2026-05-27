@@ -101,7 +101,7 @@ function CodeConfirmation({
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const googleMapsUrl = drop.lat && drop.lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${drop.lat},${drop.lng}`)}` : 'https://www.google.com/maps';
+  const huntUrl = typeof window !== 'undefined' && drop.code ? `${window.location.origin}/hunt/${drop.code}` : `/hunt/${drop.code}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(drop.code);
@@ -160,7 +160,7 @@ function CodeConfirmation({
           </button>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(googleMapsUrl);
+              navigator.clipboard.writeText(huntUrl);
               setLinkCopied(true);
               setTimeout(() => setLinkCopied(false), 2000);
             }}
@@ -335,7 +335,8 @@ function OriginPoint({
     // Try to POST to API; if not available, fallback to local behavior
     (async () => {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
         const res = await fetch('/api/drops', {
           method: 'POST',
           headers: {
@@ -632,9 +633,10 @@ export default function AgentTerminal() {
   useEffect(() => {
     const fetchDrops = async () => {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
         if (!token) return;
-        
+
         const res = await fetch('/api/drops', {
           method: 'GET',
           headers: {

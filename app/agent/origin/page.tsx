@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
+import RequireAuth from '../../../components/RequireAuth';
 
 const LocationMapPicker = dynamic(() => import('./LocationMapPicker'), { ssr: false });
 
@@ -28,6 +29,7 @@ export default function OriginPage() {
 
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
   const googleMapsUrl = lat && lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}` : 'https://www.google.com/maps';
+  const huntLink = typeof window !== 'undefined' && lastCode ? `${window.location.origin}/hunt/${lastCode}` : lastCode ? `/hunt/${lastCode}` : googleMapsUrl;
   const locationLabel = 'Itahari, Nepal';
 
   const useCurrentLocation = () => {
@@ -57,9 +59,11 @@ export default function OriginPage() {
       const code = generateCode();
       setLastCode(null);
       try {
+        const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
         const res = await fetch('/api/drops', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ code, lat: finalLat, lng: finalLng, radius: radiusOptions[radiusIndex], message, streak_required: streakEnabled ? streakDays : null }),
         });
 
@@ -181,7 +185,7 @@ export default function OriginPage() {
             </button>
             <button
               onClick={() => {
-                navigator.clipboard.writeText(googleMapsUrl);
+                navigator.clipboard.writeText(huntLink);
               }}
               className="btn-brutalist flex-1 py-2 text-xs"
             >

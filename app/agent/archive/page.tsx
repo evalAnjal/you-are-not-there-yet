@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useToast } from '../../components/ToastProvider';
+import RequireAuth from '../../../components/RequireAuth';
 
 export default function ArchivePage() {
   const [drops, setDrops] = useState<any[]>([]);
@@ -12,7 +13,8 @@ export default function ArchivePage() {
     const load = async () => {
       setLoading(true);
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
         const res = await fetch('/api/drops', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
@@ -31,8 +33,9 @@ export default function ArchivePage() {
   }, [showToast]);
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
-      <h2 className="text-lg font-bold mb-3">Archive — All Drops</h2>
+    <RequireAuth>
+      <div className="p-4 max-w-3xl mx-auto">
+        <h2 className="text-lg font-bold mb-3">Archive — All Drops</h2>
       {loading && <div className="text-xs text-zinc-500">Loading…</div>}
       {drops.length === 0 && !loading && (
         <div className="card-field border-2 border-zinc-300 p-6 text-center text-zinc-600">No archived drops</div>
@@ -55,6 +58,6 @@ export default function ArchivePage() {
           </div>
         ))}
       </div>
-    </div>
+    </RequireAuth>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useToast } from '../../components/ToastProvider';
+import RequireAuth from '../../../components/RequireAuth';
 
 export default function BriefingPage() {
   const [drops, setDrops] = useState<any[]>([]);
@@ -12,7 +13,9 @@ export default function BriefingPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/drops');
+        const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
+        const res = await fetch('/api/drops', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           showToast(j.error || 'Failed to load drops', 'error');
@@ -30,8 +33,9 @@ export default function BriefingPage() {
   }, [showToast]);
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
-      <h2 className="text-lg font-bold mb-3">Briefing — Active Drops</h2>
+    <RequireAuth>
+      <div className="p-4 max-w-3xl mx-auto">
+        <h2 className="text-lg font-bold mb-3">Briefing — Active Drops</h2>
       {loading && <div className="text-xs text-zinc-500">Loading…</div>}
       {drops.length === 0 && !loading && (
         <div className="card-field border-2 border-zinc-300 p-6 text-center text-zinc-600">No active drops</div>
@@ -51,6 +55,7 @@ export default function BriefingPage() {
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </RequireAuth>
   );
 }

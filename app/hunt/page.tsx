@@ -36,6 +36,8 @@ export default function HuntPage() {
   const params = useParams<{ payload?: string }>();
   const watchIdRef = useRef<number | null>(null);
   const autoSearchRef = useRef<string | null>(null);
+  const accelSamplesRef = useRef<number[]>([]);
+  const lastMovingRef = useRef<number>(0);
   const showToast = useToast();
 
   const [hunt, setHunt] = useState<HuntState>({
@@ -130,13 +132,12 @@ export default function HuntPage() {
 
   // Fetch user's discoveries (callable so we can refresh after recording a find)
   const fetchDiscoveries = async () => {
-    const token = localStorage.getItem('token');
+    const rawToken = localStorage.getItem('token');
+    const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
     try {
       const res = await fetch('/api/compass', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
       if (res.ok) {
         const data = await res.json();
@@ -166,12 +167,13 @@ export default function HuntPage() {
     if (!codeToSearch) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const rawToken = localStorage.getItem('token');
+      const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
       const res = await fetch('/api/compass/target', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           code: codeToSearch,
@@ -233,6 +235,20 @@ export default function HuntPage() {
             speed: Number.isFinite(speed) ? speed : prev.speed,
             locationPermission: 'granted',
           }));
+
+          // Use GPS speed as an additional indicator of movement
+          try {
+            const sp = Number.isFinite(speed) ? speed : null;
+            if (sp != null) {
+              // immediate moving if speed > 0.8 m/s (~2.9 km/h)
+              if (sp > 0.8) {
+                setHunt((prev) => ({ ...prev, isMoving: true }));
+                lastMovingRef.current = Date.now();
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
         },
         (error) => {
           setHunt((prev) => ({
@@ -344,14 +360,39 @@ export default function HuntPage() {
 
   // Handle device motion (accelerometer)
   const handleDeviceMotion = (event: DeviceMotionEvent) => {
-    const acc = event.accelerationIncludingGravity ?? event.acceleration;
-    const accelMagnitude = Math.sqrt(
-      (acc?.x || 0) ** 2 + (acc?.y || 0) ** 2 + (acc?.z || 0) ** 2
-    );
-    setHunt((prev) => ({
-      ...prev,
-      isMoving: accelMagnitude > 12 || (prev.speed ?? 0) > 0.5,
-    }));
+    const acc = event.acceleration ?? event.accelerationIncludingGravity;
+    const ax = acc?.x ?? 0;
+    const ay = acc?.y ?? 0;
+    const az = acc?.z ?? 0;
+
+    // Compute magnitude. If acceleration (without gravity) is available use it directly,
+    // otherwise fall back to accelerationIncludingGravity and subtract gravity roughly.
+    const rawMag = Math.sqrt(ax * ax + ay * ay + az * az);
+    const gravity = 9.80665;
+    const accelMagnitude = event.acceleration ? rawMag : Math.abs(rawMag - gravity);
+
+    // Maintain a small rolling window of recent accel magnitudes for smoothing
+    const samples = accelSamplesRef.current;
+    samples.push(accelMagnitude);
+    if (samples.length > 6) samples.shift();
+    accelSamplesRef.current = samples;
+
+    const avg = samples.reduce((s, v) => s + v, 0) / (samples.length || 1);
+
+    // thresholds: avg > 0.6 m/s^2 indicates movement; also consider GPS speed from state
+    const isAccelMoving = avg > 0.6;
+    const isGpsMoving = (hunt.speed ?? 0) > 0.8; // ~0.8 m/s
+
+    const now = Date.now();
+    if (isAccelMoving || isGpsMoving) {
+      lastMovingRef.current = now;
+      setHunt((prev) => ({ ...prev, isMoving: true }));
+    } else {
+      // remain 'moving' for a short grace period to avoid flicker
+      if (now - lastMovingRef.current > 1000) {
+        setHunt((prev) => ({ ...prev, isMoving: false }));
+      }
+    }
   };
 
   // Calculate distance using Haversine formula
@@ -394,12 +435,18 @@ export default function HuntPage() {
     const recordDiscovery = async () => {
       if (!hunt.code.trim() || hunt.userLat == null || hunt.userLng == null) return;
       try {
-        const token = localStorage.getItem('token');
+        const rawToken = localStorage.getItem('token');
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
+        if (!token) {
+          showToast('Login required to record discovery', 'error');
+          return;
+        }
+
         const res = await fetch('/api/compass', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
             code: hunt.code.trim(),

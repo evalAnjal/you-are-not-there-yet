@@ -16,16 +16,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { code } = body;
 
-    const token = getTokenFromHeader(req);
-    if (!token) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    // Allow anonymous lookups for shared hunt links; no authentication required for read-only lookup
 
     if (!code || typeof code !== 'string') {
       return NextResponse.json({ error: 'Code is required' }, { status: 400 });
