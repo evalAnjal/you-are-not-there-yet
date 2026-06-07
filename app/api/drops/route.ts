@@ -14,7 +14,7 @@ function getTokenFromHeader(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { code, lat, lng, radius, message, status, streak_required, is_public } = body;
+    const { code, lat, lng, radius, message, status, streak_required, is_public, public_name, public_description } = body;
 
     // require authentication for creating drops
     const token = getTokenFromHeader(req);
@@ -40,11 +40,26 @@ export async function POST(req: Request) {
     const dropStatus = status ?? 'active'; // Default to active
     const streakRequired = streak_required != null ? Number(streak_required) : null;
     const isPublic = is_public === true;
-    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, dropStatus, isPublic, created_by, streakRequired];
+    const publicName = isPublic ? (typeof public_name === 'string' ? public_name.trim() : '') : '';
+    const publicDescription = isPublic ? (typeof public_description === 'string' ? public_description.trim() : '') : '';
+    const params = [
+      id,
+      code ?? null,
+      latNum,
+      lngNum,
+      radius ?? null,
+      message ?? null,
+      dropStatus,
+      isPublic,
+      publicName || null,
+      publicDescription || null,
+      created_by,
+      streakRequired,
+    ];
     console.info('[DROP_API] Inserting drop', { id, created_by, lat: latNum, lng: lngNum, radius, message, status: dropStatus });
     try {
       const res = await query(
-        'INSERT INTO drops(id, code, lat, lng, radius, message, status, is_public, created_by, streak_required, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()) RETURNING *',
+        'INSERT INTO drops(id, code, lat, lng, radius, message, status, is_public, public_name, public_description, created_by, streak_required, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now()) RETURNING *',
         params
       );
 
@@ -72,7 +87,7 @@ export async function GET(req: Request) {
 
     if (scope === 'public') {
       const publicRes = await query(
-        `SELECT id, code, radius, message, created_at, streak_required
+        `SELECT id, code, radius, public_name, public_description, created_at, streak_required
          FROM drops
          WHERE is_public = true AND status = 'active'
          ORDER BY created_at DESC`,
@@ -107,6 +122,50 @@ export async function GET(req: Request) {
     );
 
     return NextResponse.json(res.rows || []);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const token = getTokenFromHeader(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    let payload: any;
+    try {
+      payload = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+    const created_by: string = payload.sub;
+
+    const body = await req.json();
+    const { id, is_public } = body;
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'Drop id is required' }, { status: 400 });
+    }
+
+    if (typeof is_public !== 'boolean') {
+      return NextResponse.json({ error: 'is_public must be a boolean' }, { status: 400 });
+    }
+
+    const res = await query(
+      `UPDATE drops
+       SET is_public = $1
+       WHERE id = $2 AND created_by = $3
+       RETURNING id, code, is_public, created_at`,
+      [is_public, id, created_by]
+    );
+
+    if (!res?.rows?.length) {
+      return NextResponse.json({ error: 'Drop not found or not owned by user' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, drop: res.rows[0] }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }

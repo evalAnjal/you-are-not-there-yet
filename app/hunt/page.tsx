@@ -33,12 +33,14 @@ interface PublicDrop {
   id: string;
   code: string;
   radius: string | null;
-  message: string | null;
+  public_name: string | null;
+  public_description: string | null;
   created_at: string;
   streak_required?: number | null;
 }
 
 type HuntTab = 'tracking' | 'public' | 'myhunts';
+type PublicSort = 'newest' | 'oldest';
 const HUNT_STATE_KEY = 'hunt-active-state-v1';
 
 export default function HuntPage() {
@@ -76,6 +78,8 @@ export default function HuntPage() {
   const [discoveries, setDiscoveries] = useState<any[]>([]);
   const [publicDrops, setPublicDrops] = useState<PublicDrop[]>([]);
   const [publicLoading, setPublicLoading] = useState(false);
+  const [publicSort, setPublicSort] = useState<PublicSort>('newest');
+  const [publicStreakOnly, setPublicStreakOnly] = useState(false);
 
   const unlockThreshold = 20; // 20 meters
   const payloadParam = typeof params?.payload === 'string' ? params.payload.trim() : '';
@@ -190,7 +194,8 @@ export default function HuntPage() {
               id: String(d.id),
               code: String(d.code).toUpperCase(),
               radius: d.radius != null ? String(d.radius) : null,
-              message: d.message != null ? String(d.message) : null,
+              public_name: d.public_name != null ? String(d.public_name) : null,
+              public_description: d.public_description != null ? String(d.public_description) : null,
               created_at: String(d.created_at || ''),
               streak_required: d.streak_required != null ? Number(d.streak_required) : null,
             }))
@@ -260,6 +265,15 @@ export default function HuntPage() {
     setActiveTab('tracking');
     await searchDropByCode(normalizedCode);
   };
+
+  const visiblePublicDrops = publicDrops
+    .filter((d) => (publicStreakOnly ? Number(d.streak_required || 0) > 0 : true))
+    .slice()
+    .sort((a, b) => {
+      const left = new Date(a.created_at).getTime();
+      const right = new Date(b.created_at).getTime();
+      return publicSort === 'newest' ? right - left : left - right;
+    });
 
   // Request Location Permission
   const requestLocationPermission = async () => {
@@ -788,12 +802,49 @@ export default function HuntPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {publicDrops.map((drop) => (
+                <div className="card-field border-2 border-black space-y-2">
+                  <div className="text-xs uppercase tracking-widest font-bold">Public Feed Controls</div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPublicSort('newest')}
+                      className={`flex-1 py-2 border-2 text-xs uppercase tracking-widest font-bold ${
+                        publicSort === 'newest' ? 'border-black bg-black text-white' : 'border-black bg-white text-black'
+                      }`}
+                    >
+                      Newest
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPublicSort('oldest')}
+                      className={`flex-1 py-2 border-2 text-xs uppercase tracking-widest font-bold ${
+                        publicSort === 'oldest' ? 'border-black bg-black text-white' : 'border-black bg-white text-black'
+                      }`}
+                    >
+                      Oldest
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold">
+                    <input
+                      type="checkbox"
+                      checked={publicStreakOnly}
+                      onChange={(e) => setPublicStreakOnly(e.target.checked)}
+                    />
+                    Streak hunts only
+                  </label>
+                </div>
+
+                {visiblePublicDrops.length === 0 ? (
+                  <div className="card-field text-center py-10 border-2 border-zinc-300">
+                    <div className="text-xs uppercase tracking-widest font-bold text-zinc-600">No matching hunts</div>
+                  </div>
+                ) : visiblePublicDrops.map((drop) => (
                   <div key={drop.id} className="card-field border-2 border-black space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="text-xs font-bold uppercase tracking-widest">{drop.code}</div>
-                        <div className="text-xs text-zinc-600">{drop.message || 'Public hunt'}</div>
+                        <div className="text-xs font-bold uppercase tracking-widest">{drop.public_name || 'Unnamed Public Hunt'}</div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold mt-1">Code: {drop.code}</div>
+                        <div className="text-xs text-zinc-600 mt-1">{drop.public_description || 'Hidden payload. Start hunt to reveal.'}</div>
                       </div>
                       <div className="text-right text-xs text-zinc-500">
                         <div>{drop.radius || 'radius unknown'}</div>

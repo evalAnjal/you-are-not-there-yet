@@ -64,6 +64,8 @@ async function init() {
         message text,
         status text DEFAULT 'active',
         is_public boolean NOT NULL DEFAULT false,
+        public_name text,
+        public_description text,
         created_by uuid,
         created_at timestamptz NOT NULL DEFAULT now()
       );
@@ -93,6 +95,14 @@ async function init() {
     // Add public visibility flag for public hunt discovery
     await currentPool.query(`
       ALTER TABLE drops ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT false;
+    `);
+
+    // Add optional public listing metadata
+    await currentPool.query(`
+      ALTER TABLE drops ADD COLUMN IF NOT EXISTS public_name text;
+    `);
+    await currentPool.query(`
+      ALTER TABLE drops ADD COLUMN IF NOT EXISTS public_description text;
     `);
     
     // Drop foreign key constraint if it exists (for dev, we don't enforce FK)

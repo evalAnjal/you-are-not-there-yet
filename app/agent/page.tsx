@@ -14,11 +14,14 @@ type ScreenTab = 'briefing' | 'origin' | 'archive';
 interface DeployedDrop {
   code: string;
   timestamp: string;
+  id?: string;
   lat: string;
   lng: string;
   radius: string;
   message: string;
   isPublic?: boolean;
+  publicName?: string | null;
+  publicDescription?: string | null;
   currentStreak?: number;
   streakRequired?: number | null;
 }
@@ -292,6 +295,8 @@ function OriginPoint({
   const [streakEnabled, setStreakEnabled] = useState(false);
   const [streakDays, setStreakDays] = useState<number>(3);
   const [isPublic, setIsPublic] = useState(false);
+  const [publicName, setPublicName] = useState('');
+  const [publicDescription, setPublicDescription] = useState('');
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
   const locationLabel = 'Itahari, Nepal';
 
@@ -333,6 +338,8 @@ function OriginPoint({
       message,
       streak_required: streakEnabled ? streakDays : null,
       is_public: isPublic,
+      public_name: isPublic ? publicName.trim() : null,
+      public_description: isPublic ? publicDescription.trim() : null,
     };
 
     // Try to POST to API; if not available, fallback to local behavior
@@ -351,6 +358,7 @@ function OriginPoint({
         if (res.ok) {
           const created = await res.json();
           const drop: DeployedDrop = {
+            id: created.id,
             code: created.code || payload.code,
             timestamp,
             lat: String(created.lat ?? payload.lat),
@@ -358,11 +366,14 @@ function OriginPoint({
             radius: String(created.radius ?? payload.radius),
             message: created.message ?? payload.message,
             isPublic: created.is_public ?? payload.is_public,
+            publicName: created.public_name ?? payload.public_name,
+            publicDescription: created.public_description ?? payload.public_description,
           };
           onCodeGenerated(drop);
         } else {
           // fallback local
           const drop: DeployedDrop = {
+            id: undefined,
             code: payload.code,
             timestamp,
             lat: payload.lat,
@@ -370,11 +381,14 @@ function OriginPoint({
             radius: payload.radius,
             message: payload.message,
             isPublic: payload.is_public,
+            publicName: payload.public_name,
+            publicDescription: payload.public_description,
           };
           onCodeGenerated(drop);
         }
       } catch (e) {
         const drop: DeployedDrop = {
+          id: undefined,
           code: payload.code,
           timestamp,
           lat: payload.lat,
@@ -382,12 +396,16 @@ function OriginPoint({
           radius: payload.radius,
           message: payload.message,
           isPublic: payload.is_public,
+          publicName: payload.public_name,
+          publicDescription: payload.public_description,
         };
         onCodeGenerated(drop);
       }
     })();
 
     setMessage('');
+    setPublicName('');
+    setPublicDescription('');
   };
 
   return (
@@ -542,6 +560,32 @@ function OriginPoint({
         </div>
       </div>
 
+      {isPublic && (
+        <div className="card-field space-y-2">
+          <div className="text-xs uppercase tracking-widest font-bold">Public Listing</div>
+          <label className="space-y-1 block">
+            <div className="text-[10px] uppercase tracking-widest text-zinc-600">Hunt Name</div>
+            <input
+              value={publicName}
+              onChange={(e) => setPublicName(e.target.value)}
+              maxLength={60}
+              placeholder="Neon Alley Signal"
+              className="input-brutalist w-full"
+            />
+          </label>
+          <label className="space-y-1 block">
+            <div className="text-[10px] uppercase tracking-widest text-zinc-600">Public Description</div>
+            <textarea
+              value={publicDescription}
+              onChange={(e) => setPublicDescription(e.target.value)}
+              maxLength={180}
+              placeholder="A short clue-like intro shown before hunters start."
+              className="input-brutalist w-full h-20 resize-none"
+            />
+          </label>
+        </div>
+      )}
+
       {/* Deploy Button */}
       <button
         onClick={handleDeploy}
@@ -570,7 +614,15 @@ function OriginPoint({
 // ============================================================================
 // ARCHIVE LOGBOOK
 // ============================================================================
-function ArchiveLogbook({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
+function ArchiveLogbook({
+  deployedDrops,
+  onToggleVisibility,
+  updatingCode,
+}: {
+  deployedDrops: DeployedDrop[];
+  onToggleVisibility: (code: string, nextIsPublic: boolean) => Promise<void>;
+  updatingCode: string | null;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -598,10 +650,20 @@ function ArchiveLogbook({ deployedDrops }: { deployedDrops: DeployedDrop[] }) {
                 </div>
                 <div className="text-xs text-zinc-600 font-mono">{drop.timestamp}</div>
               </div>
-              <div className="border-2 border-black px-2 py-1 transform -rotate-12">
-                <span className="text-xs font-bold uppercase tracking-widest text-orange-600">
-                  DEPLOYED
-                </span>
+              <div className="flex items-center gap-2">
+                <div className={`border-2 px-2 py-1 ${drop.isPublic ? 'border-orange-600 bg-orange-600/5' : 'border-zinc-400 bg-zinc-50'}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${drop.isPublic ? 'text-orange-600' : 'text-zinc-600'}`}>
+                    {drop.isPublic ? 'PUBLIC' : 'PRIVATE'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onToggleVisibility(drop.code, !drop.isPublic)}
+                  disabled={updatingCode === drop.code}
+                  className="border-2 border-black px-2 py-1 text-[10px] uppercase tracking-widest font-bold bg-white disabled:opacity-50"
+                >
+                  {updatingCode === drop.code ? 'Saving...' : drop.isPublic ? 'Make Private' : 'Make Public'}
+                </button>
               </div>
             </div>
 
@@ -650,25 +712,72 @@ export default function AgentTerminal() {
   const [showBoot, setShowBoot] = useState(true);
   const [deployedDrops, setDeployedDrops] = useState<DeployedDrop[]>([]);
   const [selectedDrop, setSelectedDrop] = useState<DeployedDrop | null>(null);
+  const [updatingVisibilityCode, setUpdatingVisibilityCode] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const router = useRouter();
 
-  // Check auth on mount
+  // Verify auth before rendering protected content or issuing protected requests.
   useEffect(() => {
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      if (!token) router.replace('/login');
-    } catch (e) {
-      router.replace('/login');
-    }
+    let cancelled = false;
+
+    const verifyAuth = async () => {
+      try {
+        const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
+        if (!token) {
+          if (!cancelled) {
+            setIsAuthenticated(false);
+            router.replace('/login');
+          }
+          return;
+        }
+
+        const res = await fetch('/api/auth/me', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          localStorage.removeItem('token');
+          if (!cancelled) {
+            setIsAuthenticated(false);
+            router.replace('/login');
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setIsAuthenticated(false);
+          router.replace('/login');
+        }
+      }
+    };
+
+    void verifyAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  // Fetch drops from backend on mount
+  // Fetch drops only after auth is confirmed.
   useEffect(() => {
+    if (isAuthenticated !== true) return;
+
     const fetchDrops = async () => {
       try {
         const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
-        if (!token) return;
+        if (!token) {
+          router.replace('/login');
+          return;
+        }
 
         const res = await fetch('/api/drops', {
           method: 'GET',
@@ -677,6 +786,12 @@ export default function AgentTerminal() {
             'Authorization': `Bearer ${token}`,
           },
         });
+
+        if (res.status === 401) {
+          localStorage.removeItem('token');
+          router.replace('/login');
+          return;
+        }
         
         if (!res.ok) {
           console.error('Failed to fetch drops:', res.status);
@@ -691,6 +806,7 @@ export default function AgentTerminal() {
           const createdAt = drop.created_at ? new Date(drop.created_at) : new Date();
           const timestamp = createdAt.toISOString().split('T')[0] + ' ' + createdAt.toTimeString().split(' ')[0];
           return {
+            id: String(drop.id || ''),
             code: drop.code || 'UNKNOWN',
             timestamp,
             lat: String(drop.lat || '0'),
@@ -698,6 +814,8 @@ export default function AgentTerminal() {
             radius: String(drop.radius || '10m'),
             message: drop.message || '',
             isPublic: drop.is_public ?? false,
+            publicName: drop.public_name ?? null,
+            publicDescription: drop.public_description ?? null,
             currentStreak: drop.current_streak ?? drop.currentStreak ?? 0,
             streakRequired: drop.streak_required ?? drop.streakRequired ?? null,
           };
@@ -710,7 +828,9 @@ export default function AgentTerminal() {
     };
     
     fetchDrops();
-  }, []);
+  }, [isAuthenticated, router]);
+
+  if (isAuthenticated !== true) return null;
 
   const navItems = [
     { id: 'briefing', icon: Radio, label: 'Briefing' },
@@ -721,6 +841,37 @@ export default function AgentTerminal() {
   const handleCodeGenerated = (drop: DeployedDrop) => {
     setDeployedDrops([drop, ...deployedDrops]);
     setSelectedDrop(drop);
+  };
+
+  const handleToggleVisibility = async (code: string, nextIsPublic: boolean) => {
+    const target = deployedDrops.find((d) => d.code === code);
+    if (!target?.id) return;
+
+    try {
+      setUpdatingVisibilityCode(code);
+      const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' ? rawToken : null;
+      if (!token) return;
+
+      const res = await fetch('/api/drops', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: target.id, is_public: nextIsPublic }),
+      });
+
+      if (!res.ok) {
+        return;
+      }
+
+      setDeployedDrops((prev) => prev.map((d) => (d.code === code ? { ...d, isPublic: nextIsPublic } : d)));
+    } catch (e) {
+      console.error('Failed to toggle visibility', e);
+    } finally {
+      setUpdatingVisibilityCode(null);
+    }
   };
 
   return (
@@ -755,7 +906,14 @@ export default function AgentTerminal() {
         <AnimatePresence mode="wait">
           {activeTab === 'briefing' && <BriefingRoom key="briefing" deployedDrops={deployedDrops} />}
           {activeTab === 'origin' && <OriginPoint key="origin" onCodeGenerated={handleCodeGenerated} />}
-          {activeTab === 'archive' && <ArchiveLogbook key="archive" deployedDrops={deployedDrops} />}
+          {activeTab === 'archive' && (
+            <ArchiveLogbook
+              key="archive"
+              deployedDrops={deployedDrops}
+              onToggleVisibility={handleToggleVisibility}
+              updatingCode={updatingVisibilityCode}
+            />
+          )}
         </AnimatePresence>
       </main>
 
