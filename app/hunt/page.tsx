@@ -29,6 +29,15 @@ interface HuntState {
   permissionHint: string;
 }
 
+interface PublicDrop {
+  id: string;
+  code: string;
+  radius: string | null;
+  message: string | null;
+  created_at: string;
+  streak_required?: number | null;
+}
+
 type HuntTab = 'tracking' | 'public' | 'myhunts';
 const HUNT_STATE_KEY = 'hunt-active-state-v1';
 
@@ -65,6 +74,8 @@ export default function HuntPage() {
 
   const [activeTab, setActiveTab] = useState<HuntTab>('tracking');
   const [discoveries, setDiscoveries] = useState<any[]>([]);
+  const [publicDrops, setPublicDrops] = useState<PublicDrop[]>([]);
+  const [publicLoading, setPublicLoading] = useState(false);
 
   const unlockThreshold = 20; // 20 meters
   const payloadParam = typeof params?.payload === 'string' ? params.payload.trim() : '';
@@ -161,6 +172,45 @@ export default function HuntPage() {
     fetchDiscoveries();
   }, []);
 
+  const fetchPublicDrops = async () => {
+    setPublicLoading(true);
+    try {
+      const res = await fetch('/api/drops?scope=public', { method: 'GET' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to load public hunts', 'error');
+        return;
+      }
+
+      const data = await res.json();
+      const normalized = Array.isArray(data)
+        ? data
+            .filter((d: any) => typeof d?.code === 'string' && d.code.trim().length > 0)
+            .map((d: any) => ({
+              id: String(d.id),
+              code: String(d.code).toUpperCase(),
+              radius: d.radius != null ? String(d.radius) : null,
+              message: d.message != null ? String(d.message) : null,
+              created_at: String(d.created_at || ''),
+              streak_required: d.streak_required != null ? Number(d.streak_required) : null,
+            }))
+        : [];
+
+      setPublicDrops(normalized);
+    } catch (err) {
+      console.error('Error fetching public hunts:', err);
+      showToast('Error loading public hunts', 'error');
+    } finally {
+      setPublicLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'public') {
+      void fetchPublicDrops();
+    }
+  }, [activeTab]);
+
   // Search for drop by code
   const searchDropByCode = async (codeOverride?: string) => {
     const codeToSearch = (codeOverride ?? hunt.code).trim();
@@ -200,6 +250,15 @@ export default function HuntPage() {
       console.error('Error searching for drop:', err);
       showToast('Error searching for drop', 'error');
     }
+  };
+
+  const startPublicHunt = async (dropCode: string) => {
+    const normalizedCode = dropCode.trim().toUpperCase();
+    if (!normalizedCode) return;
+
+    setHunt((prev) => ({ ...prev, code: normalizedCode, dropFound: false, discoveryRecorded: false, isUnlocked: false }));
+    setActiveTab('tracking');
+    await searchDropByCode(normalizedCode);
   };
 
   // Request Location Permission
@@ -526,7 +585,7 @@ export default function HuntPage() {
           )}
         </span>
         <div className={`text-xs border-2 ${hunt.isMoving && activeTab === 'tracking' ? 'border-orange-600 text-orange-600' : 'border-black'} px-2 sm:px-3 py-1 font-mono font-bold`}>
-          {activeTab === 'tracking' ? (hunt.isMoving ? '◆ MOVING' : '○ STATIC') : activeTab === 'public' ? 'COMING SOON' : discoveries.length > 0 ? `✓ ${discoveries.length}` : '○ NONE'}
+          {activeTab === 'tracking' ? (hunt.isMoving ? '◆ MOVING' : '○ STATIC') : activeTab === 'public' ? (publicLoading ? 'LOADING' : publicDrops.length > 0 ? `${publicDrops.length} LIVE` : '○ NONE') : discoveries.length > 0 ? `✓ ${discoveries.length}` : '○ NONE'}
         </div>
       </header>
 
@@ -718,11 +777,42 @@ export default function HuntPage() {
 
         {activeTab === 'public' && (
           <div className="w-full max-w-md p-4">
-            <div className="card-field text-center py-12 border-2 border-zinc-300">
-              <div className="text-4xl mb-4">🌍</div>
-              <div className="text-xs uppercase tracking-widest font-bold text-zinc-600 mb-2">Public Hunts</div>
-              <div className="text-xs text-zinc-500">Coming soon...</div>
-            </div>
+            {publicLoading ? (
+              <div className="card-field text-center py-12 border-2 border-zinc-300">
+                <div className="text-xs uppercase tracking-widest font-bold text-zinc-600">Loading public hunts...</div>
+              </div>
+            ) : publicDrops.length === 0 ? (
+              <div className="card-field text-center py-12 border-2 border-zinc-300">
+                <div className="text-xs uppercase tracking-widest font-bold text-zinc-600 mb-2">No public hunts</div>
+                <div className="text-xs text-zinc-500">Ask an agent to publish a hunt first.</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {publicDrops.map((drop) => (
+                  <div key={drop.id} className="card-field border-2 border-black space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-widest">{drop.code}</div>
+                        <div className="text-xs text-zinc-600">{drop.message || 'Public hunt'}</div>
+                      </div>
+                      <div className="text-right text-xs text-zinc-500">
+                        <div>{drop.radius || 'radius unknown'}</div>
+                        <div>{drop.created_at ? new Date(drop.created_at).toLocaleDateString() : ''}</div>
+                      </div>
+                    </div>
+                    {drop.streak_required ? (
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-600">Streak required: {drop.streak_required} days</div>
+                    ) : null}
+                    <button
+                      onClick={() => void startPublicHunt(drop.code)}
+                      className="w-full border-2 border-black px-3 py-2 bg-orange-600 text-white text-xs uppercase tracking-widest font-bold hover:bg-orange-700 active:translate-x-[1px] active:translate-y-[1px]"
+                    >
+                      Start Hunt
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

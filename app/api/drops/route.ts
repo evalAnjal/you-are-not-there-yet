@@ -14,7 +14,7 @@ function getTokenFromHeader(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { code, lat, lng, radius, message, status, streak_required } = body;
+    const { code, lat, lng, radius, message, status, streak_required, is_public } = body;
 
     // require authentication for creating drops
     const token = getTokenFromHeader(req);
@@ -39,11 +39,12 @@ export async function POST(req: Request) {
     const id = randomUUID();
     const dropStatus = status ?? 'active'; // Default to active
     const streakRequired = streak_required != null ? Number(streak_required) : null;
-    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, dropStatus, created_by, streakRequired];
+    const isPublic = is_public === true;
+    const params = [id, code ?? null, latNum, lngNum, radius ?? null, message ?? null, dropStatus, isPublic, created_by, streakRequired];
     console.info('[DROP_API] Inserting drop', { id, created_by, lat: latNum, lng: lngNum, radius, message, status: dropStatus });
     try {
       const res = await query(
-        'INSERT INTO drops(id, code, lat, lng, radius, message, status, created_by, streak_required, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now()) RETURNING *',
+        'INSERT INTO drops(id, code, lat, lng, radius, message, status, is_public, created_by, streak_required, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()) RETURNING *',
         params
       );
 
@@ -66,6 +67,21 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
+    const requestUrl = new URL(req.url);
+    const scope = requestUrl.searchParams.get('scope');
+
+    if (scope === 'public') {
+      const publicRes = await query(
+        `SELECT id, code, radius, message, created_at, streak_required
+         FROM drops
+         WHERE is_public = true AND status = 'active'
+         ORDER BY created_at DESC`,
+        []
+      );
+
+      return NextResponse.json(publicRes.rows || []);
+    }
+
     // require authentication and return only drops created by the caller
     const token = getTokenFromHeader(req);
     if (!token) {

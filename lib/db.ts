@@ -63,6 +63,7 @@ async function init() {
         radius text,
         message text,
         status text DEFAULT 'active',
+        is_public boolean NOT NULL DEFAULT false,
         created_by uuid,
         created_at timestamptz NOT NULL DEFAULT now()
       );
@@ -87,6 +88,11 @@ async function init() {
     // Add status column if it doesn't exist (migration for new schema)
     await currentPool.query(`
       ALTER TABLE drops ADD COLUMN IF NOT EXISTS status text DEFAULT 'active';
+    `);
+
+    // Add public visibility flag for public hunt discovery
+    await currentPool.query(`
+      ALTER TABLE drops ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT false;
     `);
     
     // Drop foreign key constraint if it exists (for dev, we don't enforce FK)

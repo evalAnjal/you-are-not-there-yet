@@ -18,6 +18,7 @@ interface DeployedDrop {
   lng: string;
   radius: string;
   message: string;
+  isPublic?: boolean;
   currentStreak?: number;
   streakRequired?: number | null;
 }
@@ -290,6 +291,7 @@ function OriginPoint({
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [streakEnabled, setStreakEnabled] = useState(false);
   const [streakDays, setStreakDays] = useState<number>(3);
+  const [isPublic, setIsPublic] = useState(false);
   const radiusOptions = ['5m', '10m', '25m', '50m', '100m'];
   const locationLabel = 'Itahari, Nepal';
 
@@ -330,6 +332,7 @@ function OriginPoint({
       radius: radiusOptions[radiusIndex],
       message,
       streak_required: streakEnabled ? streakDays : null,
+      is_public: isPublic,
     };
 
     // Try to POST to API; if not available, fallback to local behavior
@@ -354,6 +357,7 @@ function OriginPoint({
             lng: String(created.lng ?? payload.lng),
             radius: String(created.radius ?? payload.radius),
             message: created.message ?? payload.message,
+            isPublic: created.is_public ?? payload.is_public,
           };
           onCodeGenerated(drop);
         } else {
@@ -365,6 +369,7 @@ function OriginPoint({
             lng: payload.lng,
             radius: payload.radius,
             message: payload.message,
+            isPublic: payload.is_public,
           };
           onCodeGenerated(drop);
         }
@@ -376,6 +381,7 @@ function OriginPoint({
           lng: payload.lng,
           radius: payload.radius,
           message: payload.message,
+          isPublic: payload.is_public,
         };
         onCodeGenerated(drop);
       }
@@ -507,6 +513,33 @@ function OriginPoint({
             <input type="number" min={1} value={streakDays} onChange={(e) => setStreakDays(Number(e.target.value || 1))} className="input-brutalist w-28" />
           </div>
         )}
+      </div>
+
+      <div className="card-field space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase tracking-widest font-bold">Visibility</div>
+          <div className="text-xs text-zinc-600">{isPublic ? 'Public' : 'Private'}</div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setIsPublic(false)}
+            className={`flex-1 py-2 border-2 text-xs uppercase tracking-widest font-bold ${
+              !isPublic ? 'border-black bg-black text-white' : 'border-black bg-white text-black'
+            }`}
+          >
+            Private
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsPublic(true)}
+            className={`flex-1 py-2 border-2 text-xs uppercase tracking-widest font-bold ${
+              isPublic ? 'border-black bg-orange-600 text-white' : 'border-black bg-white text-black'
+            }`}
+          >
+            Public
+          </button>
+        </div>
       </div>
 
       {/* Deploy Button */}
@@ -664,6 +697,7 @@ export default function AgentTerminal() {
             lng: String(drop.lng || '0'),
             radius: String(drop.radius || '10m'),
             message: drop.message || '',
+            isPublic: drop.is_public ?? false,
             currentStreak: drop.current_streak ?? drop.currentStreak ?? 0,
             streakRequired: drop.streak_required ?? drop.streakRequired ?? null,
           };

@@ -23,8 +23,8 @@ export async function POST(req: Request) {
     }
 
     const res = await query(
-      'SELECT id, code, lat, lng, radius FROM drops WHERE code = $1 LIMIT 1',
-      [code.trim().toUpperCase()]
+      'SELECT id, code, lat, lng, radius, is_public FROM drops WHERE code = $1 AND status = $2 LIMIT 1',
+      [code.trim().toUpperCase(), 'active']
     );
 
     if (!res?.rows?.length) {
@@ -41,6 +41,7 @@ export async function POST(req: Request) {
           lat: drop.lat,
           lng: drop.lng,
           radius: drop.radius,
+          is_public: drop.is_public,
         },
       },
       { status: 200 }
