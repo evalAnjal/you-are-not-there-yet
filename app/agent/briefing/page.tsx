@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useToast } from '../../components/ToastProvider';
-import RequireAuth from '../../../components/RequireAuth';
+import RequireAuth from '../../components/RequireAuth';
 
 export default function BriefingPage() {
   const [drops, setDrops] = useState<any[]>([]);
