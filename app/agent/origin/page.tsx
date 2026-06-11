@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
-import RequireAuth from '../../../components/RequireAuth';
+import RequireAuth from '../../components/RequireAuth';
 
 const LocationMapPicker = dynamic(() => import('./LocationMapPicker'), { ssr: false });
 
